@@ -49,3 +49,12 @@
       l3_stick_button_type: "button"
       r3_stick_button: 12
       r3_stick_button_type: "button"
+
+      directional_buttons_up: 13
+      directional_buttons_up_type: "button"
+      directional_buttons_down: 14
+      directional_buttons_down_type: "button"
+      directional_buttons_left: 15
+      directional_buttons_left_type: "button"
+      directional_buttons_right: 16
+      directional_buttons_right_type: "button"
