@@ -1,60 +1,32 @@
 /**:
   delta_teleop_node:
     ros__parameters:
-      left_stick_x_axis: 0
-      left_stick_x_axis_type: "axis"
-      left_stick_y_axis: 1
-      left_stick_y_axis_type: "axis"
-      right_stick_x_axis: 3
-      right_stick_x_axis_type: "axis"
-      right_stick_y_axis: 4
-      right_stick_y_axis_type: "axis"
+      axis_left_stick_x: 0
+      axis_left_stick_y: 1
+      axis_right_stick_x: 3
+      axis_right_stick_y: 4
 
-      directional_buttons_x_axis: 6
-      directional_buttons_x_axis_type: "axis"
-      directional_buttons_y_axis: 7
-      directional_buttons_y_axis_type: "axis"
+      trigger_l2: 2
+      trigger_r2: 5
 
-      l2_trigger: 2
-      l2_trigger_type: "trigger"
-      r2_trigger: 5
-      r2_trigger_type: "trigger"
+      button_cross: 0
+      button_circle: 1
+      button_triangle: 2
+      button_square: 3
 
-      cross_button: 0
-      cross_button_type: "button"
-      circle_button: 1
-      circle_button_type: "button"
-      triangle_button: 2
-      triangle_button_type: "button"
-      square_button: 3
-      square_button_type: "button"
+      button_l1: 4
+      button_r1: 5
+      button_l2: 6
+      button_r2: 7
 
-      l1_button: 4
-      l1_button_type: "button"
-      r1_button: 5
-      r1_button_type: "button"
-      l2_button: 6
-      l2_button_type: "button"
-      r2_button: 7
-      r2_button_type: "button"
+      button_select: 8
+      button_start: 9
+      button_ps: 10
 
-      share_button: 8
-      share_button_type: "button"
-      options_button: 9
-      options_button_type: "button"
-      ps_button: 10
-      ps_button_type: "button"
+      button_l3_stick: 11
+      button_r3_stick: 12
 
-      l3_stick_button: 11
-      l3_stick_button_type: "button"
-      r3_stick_button: 12
-      r3_stick_button_type: "button"
-
-      directional_buttons_up: 13
-      directional_buttons_up_type: "button"
-      directional_buttons_down: 14
-      directional_buttons_down_type: "button"
-      directional_buttons_left: 15
-      directional_buttons_left_type: "button"
-      directional_buttons_right: 16
-      directional_buttons_right_type: "button"
+      button_directional_up: 13
+      button_directional_down: 14
+      button_directional_left: 15
+      button_directional_right: 16
