@@ -40,8 +40,9 @@ static float y_scale;
 static float z_scale;
 
 static const float boundary_radius = 0.13f; // number based on same parameter in delta_position.cpp
-static const float z_increment = 2 * std::pow(10, -5); // increment value chosen arbitrarily
-static const float xy_increment = 2 * std::pow(10, -5); // increment value chosen arbitrarily
+static const float base_x_increment = 2 * std::pow(10, -5); // increment value chosen arbitrarily
+static const float base_y_increment = 2 * std::pow(10, -5); // increment value chosen arbitrarily
+static const float base_z_increment = 2 * std::pow(10, -5); // increment value chosen arbitrarily
 
 enum class InputType
 {
@@ -196,12 +197,12 @@ int main(int argc, char * argv[])
             
             command.header.stamp = current_time;
             
-            // geometry_msgs::msg::PointStamped rounded_command = command;
-            // rounded_command.point.x = std::round(rounded_command.point.x * 1000)/1000;
-            // rounded_command.point.y = std::round(rounded_command.point.y * 1000)/1000;
-            // rounded_command.point.z = std::round(rounded_command.point.z * 1000)/1000;
+            geometry_msgs::msg::PointStamped rounded_command = command;
+            rounded_command.point.x = std::round(rounded_command.point.x * 1000)/1000;
+            rounded_command.point.y = std::round(rounded_command.point.y * 1000)/1000;
+            rounded_command.point.z = std::round(rounded_command.point.z * 1000)/1000;
 
-            delta_pos_pub->publish(command);
+            delta_pos_pub->publish(rounded_command);
         }
         rclcpp::spin_some(node);
     }
@@ -246,7 +247,7 @@ static MovementInput function_input(const std::string input_assignment, const st
         }
         catch(const rclcpp::exceptions::ParameterAlreadyDeclaredException& e)
         {
-            RCLCPP_WARN(rclcpp::get_logger("delta_joystick"), "Assigning the following input to two or more functions %s", input_assignment.c_str());
+            RCLCPP_WARN(rclcpp::get_logger("delta_joystick"), "Assigning the following input to two or more functions: %s", input_assignment.c_str());
             output = MovementInput(rosnu::get_param<int>(input_assignment, *node), input_type(input_assignment));
         }
         
@@ -290,13 +291,13 @@ static void delta_forward(const MovementInput input, geometry_msgs::msg::PointSt
         case InputType::None:
             return;
         case InputType::Axis:
-            temp_command->point.x = temp_command->point.x + xy_increment * x_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            temp_command->point.x = temp_command->point.x + base_x_increment * x_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            temp_command->point.x = temp_command->point.x + xy_increment * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * x_scale;
+            temp_command->point.x = temp_command->point.x + base_x_increment * x_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            temp_command->point.x = temp_command->point.x + xy_increment * x_scale * latest_joy_state.buttons.at(input.index);
+            temp_command->point.x = temp_command->point.x + base_x_increment * x_scale * latest_joy_state.buttons.at(input.index);
             break;
     }
 
@@ -310,13 +311,13 @@ static void delta_backward(const MovementInput input, geometry_msgs::msg::PointS
         case InputType::None:
             return;
         case InputType::Axis:
-            temp_command->point.x = temp_command->point.x + xy_increment * x_scale * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
+            temp_command->point.x = temp_command->point.x + base_x_increment * x_scale * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            temp_command->point.x = temp_command->point.x - xy_increment * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * x_scale;
+            temp_command->point.x = temp_command->point.x - base_x_increment * x_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            temp_command->point.x = temp_command->point.x - xy_increment * x_scale * latest_joy_state.buttons.at(input.index);
+            temp_command->point.x = temp_command->point.x - base_x_increment * x_scale * latest_joy_state.buttons.at(input.index);
             break;
     }
 
@@ -330,13 +331,13 @@ static void delta_left(const MovementInput input, geometry_msgs::msg::PointStamp
         case InputType::None:
             return;
         case InputType::Axis:
-            temp_command->point.y = temp_command->point.y - xy_increment * y_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            temp_command->point.y = temp_command->point.y - base_y_increment * y_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            temp_command->point.y = temp_command->point.y - xy_increment * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * y_scale;
+            temp_command->point.y = temp_command->point.y - base_y_increment * y_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            temp_command->point.y = temp_command->point.y - xy_increment * y_scale * latest_joy_state.buttons.at(input.index);
+            temp_command->point.y = temp_command->point.y - base_y_increment * y_scale * latest_joy_state.buttons.at(input.index);
             break;
     }
 
@@ -350,13 +351,13 @@ static void delta_right(const MovementInput input, geometry_msgs::msg::PointStam
         case InputType::None:
             return;
         case InputType::Axis:
-            temp_command->point.y = temp_command->point.y - xy_increment * y_scale * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
+            temp_command->point.y = temp_command->point.y - base_y_increment * y_scale * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            temp_command->point.y = temp_command->point.y + xy_increment * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * y_scale;
+            temp_command->point.y = temp_command->point.y + base_y_increment * y_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            temp_command->point.y = temp_command->point.y + xy_increment * y_scale * latest_joy_state.buttons.at(input.index);
+            temp_command->point.y = temp_command->point.y + base_y_increment * y_scale * latest_joy_state.buttons.at(input.index);
             break;
     }
 
@@ -370,13 +371,13 @@ static void delta_up(const MovementInput input, geometry_msgs::msg::PointStamped
         case InputType::None:
             return;
         case InputType::Axis:
-            temp_command->point.z = temp_command->point.z + z_increment * z_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            temp_command->point.z = temp_command->point.z + base_z_increment * z_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            temp_command->point.z = temp_command->point.z + z_increment * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * z_scale;
+            temp_command->point.z = temp_command->point.z + base_z_increment * z_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            temp_command->point.z = temp_command->point.z + z_increment * z_scale * latest_joy_state.buttons.at(input.index);
+            temp_command->point.z = temp_command->point.z + base_z_increment * z_scale * latest_joy_state.buttons.at(input.index);
             break;
     }
 
@@ -390,13 +391,13 @@ static void delta_down(const MovementInput input, geometry_msgs::msg::PointStamp
         case InputType::None:
             return;
         case InputType::Axis:
-            temp_command->point.z = temp_command->point.z + z_increment * z_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            temp_command->point.z = temp_command->point.z + base_z_increment * z_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            temp_command->point.z = temp_command->point.z - z_increment * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * z_scale;
+            temp_command->point.z = temp_command->point.z - base_z_increment * z_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            temp_command->point.z = temp_command->point.z - z_increment * z_scale * latest_joy_state.buttons.at(input.index);
+            temp_command->point.z = temp_command->point.z - base_z_increment * z_scale * latest_joy_state.buttons.at(input.index);
             break;
     }
 
