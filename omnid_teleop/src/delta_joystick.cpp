@@ -30,6 +30,10 @@
 #include <string>
 #include <cmath>
 
+#include "yaml-cpp/yaml.h"
+#include <iostream>
+#include <ament_index_cpp/get_package_share_directory.hpp>
+
 using std::string;
 
 static geometry_msgs::msg::PointStamped command;
@@ -72,9 +76,9 @@ class MovementInput
 /// @param input_name - The name of the controller input
 static InputType input_type(std::string input_name);
 
-/// @brief Returns the type of the input based on its name (Axis, Trigger, Button, or None)
+/// @brief Returns a MovementInput object using input assignment, along with the button mapping dictionary
 /// @param input_name - The name of the controller input
-static MovementInput function_input(std::string input_assignment, std::shared_ptr<rclcpp::Node> node);
+static MovementInput function_input(std::string input_assignment, std::map<std::string, int> map);
 
 /// @brief Handler for a joy message
 /// @param joy_state - The states of the inputs of the controller
@@ -133,8 +137,8 @@ int main(int argc, char * argv[])
     //
     // Declaring and getting parameters
     //
-    // Input assignments
-    const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_delta", "button_r1", *node, "Button assigned to enable delta movement");
+    // Function -> Controller input assignments from control scheme parameters
+    const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_delta", "UNUSED", *node, "Button assigned to enable delta movement");
     const std::string reset_assignment = rosnu::declare_and_get_param<std::string>("reset_delta", "UNUSED", *node, "Button assigned to reset delta position");
     const std::string forward_assignment = rosnu::declare_and_get_param<std::string>("delta_forward", "UNUSED", *node, "Button assigned to move delta forward");
     const std::string backward_assignment = rosnu::declare_and_get_param<std::string>("delta_backward", "UNUSED", *node, "Button assigned to move delta backward");
@@ -142,23 +146,39 @@ int main(int argc, char * argv[])
     const std::string right_assignment = rosnu::declare_and_get_param<std::string>("delta_right", "UNUSED", *node, "Button assigned to move delta right");
     const std::string up_assignment = rosnu::declare_and_get_param<std::string>("delta_up", "UNUSED", *node, "Button assigned to move delta up");
     const std::string down_assignment = rosnu::declare_and_get_param<std::string>("delta_down", "UNUSED", *node, "Button assigned to move delta down");
+    // Creating a controller input -> associated joy message index number dictionary from the input device config file
+    // YAML::Node input_device = YAML::LoadFile("$(find omnid_teleop)/config/test_config.yaml");
+    const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device", "dualshock4_mapping", *node, "Chosen input device config file");
+    std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("omnid_teleop");
+    std::string full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
+    YAML::Node input_device = YAML::LoadFile(full_path);
+
+    const std::string device_name = input_device["name"].as<string>();
+    RCLCPP_INFO(rclcpp::get_logger("delta_joystick"), ("Currently using the " + device_name + " input device").c_str());
+
+    std::map<std::string, int> button_map;
+    for (const auto& it : input_device["mapping"])
+    {
+        button_map[it.first.as<std::string>()] = it.second.as<int>();
+    }
+    
     // MovementInput from input assignments
     // Enabling Delta movement
-    MovementInput enable_input = function_input(enable_assignment, node);
+    MovementInput enable_input = function_input(enable_assignment, button_map);
     // Reset Delta position
-    MovementInput reset_input = function_input(reset_assignment, node);
+    MovementInput reset_input = function_input(reset_assignment, button_map);
     // Moving Delta forward
-    MovementInput forward_input = function_input(forward_assignment, node);
+    MovementInput forward_input = function_input(forward_assignment, button_map);
     // Moving Delta backward
-    MovementInput backward_input = function_input(backward_assignment, node);
+    MovementInput backward_input = function_input(backward_assignment, button_map);
     // Moving Delta left
-    MovementInput left_input = function_input(left_assignment, node);
+    MovementInput left_input = function_input(left_assignment, button_map);
     // Moving Delta right
-    MovementInput right_input = function_input(right_assignment, node);
+    MovementInput right_input = function_input(right_assignment, button_map);
     // Moving Delta up
-    MovementInput up_input = function_input(up_assignment, node);
+    MovementInput up_input = function_input(up_assignment, button_map);
     // Moving Delta down
-    MovementInput down_input = function_input(down_assignment, node);
+    MovementInput down_input = function_input(down_assignment, button_map);
 
     // Aditional parameters
     x_scale = rosnu::declare_and_get_param<float>("x_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
@@ -236,22 +256,12 @@ static InputType input_type(const std::string input_name)
     
 }
 
-static MovementInput function_input(const std::string input_assignment, const std::shared_ptr<rclcpp::Node> node)
+static MovementInput function_input(std::string input_assignment, std::map<std::string, int> map)
 {
-    MovementInput output;
     if (input_assignment != "UNUSED")
     {
-        try
-        {
-            output = MovementInput(rosnu::declare_and_get_param<int>(input_assignment, *node, "Index to read for input of function"), input_type(input_assignment));
-        }
-        catch(const rclcpp::exceptions::ParameterAlreadyDeclaredException& e)
-        {
-            RCLCPP_WARN(rclcpp::get_logger("delta_joystick"), "Assigning the following input to two or more functions: %s", input_assignment.c_str());
-            output = MovementInput(rosnu::get_param<int>(input_assignment, *node), input_type(input_assignment));
-        }
-        
-        return output;
+        int index = map[input_assignment];
+        return MovementInput(index, input_type(input_assignment));
     }
     else
     {

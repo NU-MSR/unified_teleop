@@ -1,30 +1,29 @@
-/**:
-  delta_teleop_node:
-    ros__parameters:
-      axis_left_stick_x: 0
-      axis_left_stick_y: 1
-      axis_right_stick_x: 3
-      axis_right_stick_y: 4
+name: "dualshock 4 controller"
+mapping:
+  axis_left_stick_x: 0
+  axis_left_stick_y: 1
+  axis_right_stick_x: 3
+  axis_right_stick_y: 4
 
-      axis_directional_buttons_x: 6
-      axis_directional_buttons_y: 7
+  axis_directional_buttons_x: 6
+  axis_directional_buttons_y: 7
 
-      trigger_l2: 2
-      trigger_r2: 5
+  trigger_l2: 2
+  trigger_r2: 5
 
-      button_cross: 0
-      button_circle: 1
-      button_triangle: 2
-      button_square: 3
+  button_cross: 0
+  button_circle: 1
+  button_triangle: 2
+  button_square: 3
 
-      button_l1: 4
-      button_r1: 5
-      button_l2: 6
-      button_r2: 7
+  button_l1: 4
+  button_r1: 5
+  button_l2: 6
+  button_r2: 7
 
-      button_share: 8
-      button_options: 9
-      button_ps: 10
+  button_share: 8
+  button_options: 9
+  button_ps: 10
 
-      button_l3_stick: 11
-      button_r3_stick: 12
+  button_l3_stick: 11
+  button_r3_stick: 12

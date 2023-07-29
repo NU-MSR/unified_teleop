@@ -11,6 +11,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rosnu REQUIRED)
 find_package(omnid_core REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 ###########
 ## Build ##
@@ -22,7 +23,7 @@ set(OMNID_TELEOP_AMENT_TARGET_DEPENDENCIES
   rclcpp geometry_msgs sensor_msgs rosnu
 )
 set(OMNID_TELEOP_TARGET_LINK_LIBRARIES
-  cmakeme_flags omnid_core::omnid_core
+  cmakeme_flags omnid_core::omnid_core yaml-cpp
   "${cpp_typesupport_target}"
 )
 
