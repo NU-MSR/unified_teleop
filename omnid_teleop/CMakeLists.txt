@@ -41,12 +41,31 @@ target_link_libraries(${PROJECT_NAME}_delta_joystick
   ${OMNID_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
+# mobile_joystick
+add_executable(${PROJECT_NAME}_mobile_joystick src/mobile_joystick.cpp)
+set_target_properties(${PROJECT_NAME}_mobile_joystick
+  PROPERTIES
+  OUTPUT_NAME mobile_joystick
+  PREFIX ""
+)
+ament_target_dependencies(${PROJECT_NAME}_mobile_joystick
+  ${OMNID_TELEOP_AMENT_TARGET_DEPENDENCIES}
+)
+target_link_libraries(${PROJECT_NAME}_mobile_joystick
+  ${OMNID_TELEOP_TARGET_LINK_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############
 
 install(TARGETS
   ${PROJECT_NAME}_delta_joystick
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS
+  ${PROJECT_NAME}_mobile_joystick
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
