@@ -34,16 +34,18 @@
 
 using std::string;
 
+static geometry_msgs::msg::Twist latest_linear;
+static geometry_msgs::msg::Twist latest_angular;
 static geometry_msgs::msg::Twist old_command;
 static geometry_msgs::msg::Twist new_command;
 
 /// @brief Handler for a joint state message
 /// @param joints_state - The joint states of the robot
-void linear_callback(const sensor_msgs::msg::JointState & joint_state);
+static void linear_callback(const geometry_msgs::msg::Twist & twist_state);
 
 /// @brief Handler for a joint state message
 /// @param joints_state - The joint states of the robot
-void angular_callback(const sensor_msgs::msg::JointState & joint_state);
+static void angular_callback(const geometry_msgs::msg::Twist & twist_state);
 
 int main(int argc, char * argv[])
 {
@@ -62,37 +64,29 @@ int main(int argc, char * argv[])
     // Control loop
     while (rclcpp::ok())
     {
-        rclcpp::Time current_time = rclcpp::Clock().now();
+        new_command = old_command;
 
-        if(fresh_joy_state)
-        {
-            command = zero_command();
+        new_command.linear.x = latest_linear.linear.x;
+        new_command.linear.y = latest_linear.linear.y;
+        new_command.linear.z = latest_linear.linear.z;
 
-            if(control_enabled(enable_input))
-            {
-                command = x_axis_inc(x_inc_input, command);
-                command = x_axis_dec(x_dec_input, command);
-                command = y_axis_inc(y_inc_input, command);
-                command = y_axis_dec(y_dec_input, command);
-                command = z_axis_inc(z_inc_input, command);
-                command = z_axis_dec(z_dec_input, command);
+        new_command.angular.x = latest_angular.angular.x;
+        new_command.angular.y = latest_angular.angular.y;
+        new_command.angular.z = latest_angular.angular.z;
 
-                command = yaw_inc(yaw_inc_input, command);
-                command = yaw_dec(yaw_dec_input, command);
-                command = pitch_inc(pitch_inc_input, command);
-                command = pitch_dec(pitch_dec_input, command);
-                command = roll_inc(roll_inc_input, command);
-                command = roll_dec(roll_dec_input, command);
-            }
-
-            delta_pos_pub->publish(command);
-        }
+        twist_pub->publish(new_command);
+        
         rclcpp::spin_some(node);
     }
     return 0;
 }
 
-static void joy_callback(const geometry_msgs::msg::Twist & twsit_state)
+static void linear_callback(const geometry_msgs::msg::Twist & twist_state)
 {
-    latest_joy_state = twist_state;
+    latest_linear = twist_state;
+}
+
+static void angular_callback(const geometry_msgs::msg::Twist & twist_state)
+{
+    latest_angular = twist_state;
 }

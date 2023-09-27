@@ -69,6 +69,20 @@ target_link_libraries(${PROJECT_NAME}_delta_direct_joystick
   ${OMNID_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
+# twist_linear_angular
+add_executable(${PROJECT_NAME}_twist_linear_angular src/twist_linear_angular.cpp)
+set_target_properties(${PROJECT_NAME}_twist_linear_angular
+  PROPERTIES
+  OUTPUT_NAME twist_linear_angular
+  PREFIX ""
+)
+ament_target_dependencies(${PROJECT_NAME}_twist_linear_angular
+  ${OMNID_TELEOP_AMENT_TARGET_DEPENDENCIES}
+)
+target_link_libraries(${PROJECT_NAME}_twist_linear_angular
+  ${OMNID_TELEOP_TARGET_LINK_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############
@@ -88,7 +102,10 @@ install(TARGETS
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
-install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+install(TARGETS
+  ${PROJECT_NAME}_twist_linear_angular
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
 
 # install configuration files
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
