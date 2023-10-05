@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(numsr_controller_interface)
+project(unified_teleop)
 find_package(cmakeme REQUIRED)
 cmakeme_defaults(Debug)
 
@@ -19,10 +19,10 @@ find_package(yaml-cpp REQUIRED)
 
 ament_export_dependencies(rclcpp sensor_msgs nav_msgs rosnu)
 
-set(NUMSR_CONTROLLER_INTERFACE_AMENT_TARGET_DEPENDENCIES
+set(UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES
   rclcpp geometry_msgs sensor_msgs rosnu
 )
-set(NUMSR_CONTROLLER_INTERFACE_TARGET_LINK_LIBRARIES
+set(UNIFIED_TELEOP_TARGET_LINK_LIBRARIES
   cmakeme_flags omnid_core::omnid_core yaml-cpp
   "${cpp_typesupport_target}"
 )
@@ -35,10 +35,10 @@ set_target_properties(${PROJECT_NAME}_delta_joystick
   PREFIX ""
 )
 ament_target_dependencies(${PROJECT_NAME}_delta_joystick
-  ${NUMSR_CONTROLLER_INTERFACE_AMENT_TARGET_DEPENDENCIES}
+  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
 )
 target_link_libraries(${PROJECT_NAME}_delta_joystick
-  ${NUMSR_CONTROLLER_INTERFACE_TARGET_LINK_LIBRARIES}
+  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
 # mobile_joystick
@@ -49,10 +49,10 @@ set_target_properties(${PROJECT_NAME}_mobile_joystick
   PREFIX ""
 )
 ament_target_dependencies(${PROJECT_NAME}_mobile_joystick
-  ${NUMSR_CONTROLLER_INTERFACE_AMENT_TARGET_DEPENDENCIES}
+  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
 )
 target_link_libraries(${PROJECT_NAME}_mobile_joystick
-  ${NUMSR_CONTROLLER_INTERFACE_TARGET_LINK_LIBRARIES}
+  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
 # delta_direct_joystick
@@ -63,10 +63,10 @@ set_target_properties(${PROJECT_NAME}_delta_direct_joystick
   PREFIX ""
 )
 ament_target_dependencies(${PROJECT_NAME}_delta_direct_joystick
-  ${NUMSR_CONTROLLER_INTERFACE_AMENT_TARGET_DEPENDENCIES}
+  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
 )
 target_link_libraries(${PROJECT_NAME}_delta_direct_joystick
-  ${NUMSR_CONTROLLER_INTERFACE_TARGET_LINK_LIBRARIES}
+  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
 # twist_linear_angular
@@ -77,10 +77,10 @@ set_target_properties(${PROJECT_NAME}_twist_linear_angular
   PREFIX ""
 )
 ament_target_dependencies(${PROJECT_NAME}_twist_linear_angular
-  ${NUMSR_CONTROLLER_INTERFACE_AMENT_TARGET_DEPENDENCIES}
+  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
 )
 target_link_libraries(${PROJECT_NAME}_twist_linear_angular
-  ${NUMSR_CONTROLLER_INTERFACE_TARGET_LINK_LIBRARIES}
+  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
 #############

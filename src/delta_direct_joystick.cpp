@@ -170,7 +170,7 @@ int main(int argc, char * argv[])
     const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *node, "Chosen input device config file");
     
     // Creating a controller input -> associated joy message index number map from the input device config file
-    std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("numsr_controller_interface");
+    std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
     std::string full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
     YAML::Node input_device = YAML::LoadFile(full_path);
     // Getting the input device name and printing it to the serial

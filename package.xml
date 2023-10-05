@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>numsr_controller_interface</name>
+  <name>unified_teleop</name>
   <version>0.0.1</version>
   <description>Package that allows a robot to interface with any controller input device</description>
 
