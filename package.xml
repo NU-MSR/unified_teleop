@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>omnid_teleop</name>
+  <name>numsr_controller_interface</name>
   <version>0.0.1</version>
-  <description>Interface between the controller and omnid robot</description>
+  <description>Package that allows a robot to interface with any controller input device</description>
 
   <maintainer email="elwin@northwestern.edu">Matthew Elwin</maintainer>
 
   <license>GPLv3</license>
 
 
-  <url type="repository">http://github.com/omnid/omnid_control</url>
+  <url type="repository">https://github.com/dkoh555/numsr_contoller_interface</url>
 
   <author email="elwin@northwestern.edu">Matthew Elwin</author>
 
