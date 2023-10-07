@@ -161,7 +161,7 @@ int main(int argc, char * argv[])
 {
     // ROS
     rclcpp::init(argc, argv);
-    auto node = rclcpp::Node::make_shared("mobile_joystick");
+    auto node = rclcpp::Node::make_shared("cmd_vel_mirror_joystick");
     rclcpp::Rate rate(1000); // ROS Rate at 1000Hz
 
     // Subscriber

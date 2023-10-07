@@ -141,7 +141,7 @@ int main(int argc, char * argv[])
 {
     // ROS
     rclcpp::init(argc, argv);
-    auto node = rclcpp::Node::make_shared("delta_direct_joystick");
+    auto node = rclcpp::Node::make_shared("point_stamped_mirror_joystick");
     rclcpp::Rate rate(1000); // ROS Rate at 1000Hz
 
     // Subscriber
@@ -175,7 +175,7 @@ int main(int argc, char * argv[])
     YAML::Node input_device = YAML::LoadFile(full_path);
     // Getting the input device name and printing it to the serial
     const std::string device_name = input_device["name"].as<string>();
-    RCLCPP_INFO(rclcpp::get_logger("delta_direct_joystick"), ("Currently using the " + device_name + " input device").c_str());
+    RCLCPP_INFO(rclcpp::get_logger("point_stamped_mirror_joystick"), ("Currently using the " + device_name + " input device").c_str());
     // Creating the button map from the input device config file
     std::map<std::string, int> button_map;
     for (const auto& it : input_device["mapping"])
@@ -236,7 +236,7 @@ static InputType input_type(const std::string input_name)
 {
     if (input_name.empty())
     {
-        RCLCPP_ERROR(rclcpp::get_logger("delta_direct_joystick"), "Provided input is empty");
+        RCLCPP_ERROR(rclcpp::get_logger("point_stamped_mirror_joystick"), "Provided input is empty");
         rclcpp::shutdown();
         throw std::runtime_error("Provided input is empty");
     }
@@ -252,7 +252,7 @@ static InputType input_type(const std::string input_name)
         case 'b':
             return InputType::Button;
         default:
-            RCLCPP_ERROR(rclcpp::get_logger("delta_direct_joystick"), "Unable to determine input type");
+            RCLCPP_ERROR(rclcpp::get_logger("point_stamped_mirror_joystick"), "Unable to determine input type");
             rclcpp::shutdown();
             throw std::runtime_error("Unable to determine input type");
     }

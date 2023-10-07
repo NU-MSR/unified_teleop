@@ -27,17 +27,17 @@ set(UNIFIED_TELEOP_TARGET_LINK_LIBRARIES
   "${cpp_typesupport_target}"
 )
 
-# delta_joystick
-add_executable(${PROJECT_NAME}_delta_joystick src/delta_joystick.cpp)
-set_target_properties(${PROJECT_NAME}_delta_joystick
+# point_stamped_joystick
+add_executable(${PROJECT_NAME}_point_stamped_joystick src/point_stamped_joystick.cpp)
+set_target_properties(${PROJECT_NAME}_point_stamped_joystick
   PROPERTIES
-  OUTPUT_NAME delta_joystick
+  OUTPUT_NAME point_stamped_joystick
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_delta_joystick
+ament_target_dependencies(${PROJECT_NAME}_point_stamped_joystick
   ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
 )
-target_link_libraries(${PROJECT_NAME}_delta_joystick
+target_link_libraries(${PROJECT_NAME}_point_stamped_joystick
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
@@ -55,31 +55,31 @@ target_link_libraries(${PROJECT_NAME}_mobile_joystick
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
-# delta_direct_joystick
-add_executable(${PROJECT_NAME}_delta_direct_joystick src/delta_direct_joystick.cpp)
-set_target_properties(${PROJECT_NAME}_delta_direct_joystick
+# point_stamped_mirror_joystick
+add_executable(${PROJECT_NAME}_point_stamped_mirror_joystick src/point_stamped_mirror_joystick.cpp)
+set_target_properties(${PROJECT_NAME}_point_stamped_mirror_joystick
   PROPERTIES
-  OUTPUT_NAME delta_direct_joystick
+  OUTPUT_NAME point_stamped_mirror_joystick
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_delta_direct_joystick
+ament_target_dependencies(${PROJECT_NAME}_point_stamped_mirror_joystick
   ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
 )
-target_link_libraries(${PROJECT_NAME}_delta_direct_joystick
+target_link_libraries(${PROJECT_NAME}_point_stamped_mirror_joystick
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
-# twist_linear_angular
-add_executable(${PROJECT_NAME}_twist_linear_angular src/twist_linear_angular.cpp)
-set_target_properties(${PROJECT_NAME}_twist_linear_angular
+# cmd_vel_mirror_joystick
+add_executable(${PROJECT_NAME}_cmd_vel_mirror_joystick src/cmd_vel_mirror_joystick.cpp)
+set_target_properties(${PROJECT_NAME}_cmd_vel_mirror_joystick
   PROPERTIES
-  OUTPUT_NAME twist_linear_angular
+  OUTPUT_NAME cmd_vel_mirror_joystick
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_twist_linear_angular
+ament_target_dependencies(${PROJECT_NAME}_cmd_vel_mirror_joystick
   ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
 )
-target_link_libraries(${PROJECT_NAME}_twist_linear_angular
+target_link_libraries(${PROJECT_NAME}_cmd_vel_mirror_joystick
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
@@ -88,7 +88,7 @@ target_link_libraries(${PROJECT_NAME}_twist_linear_angular
 #############
 
 install(TARGETS
-  ${PROJECT_NAME}_delta_joystick
+  ${PROJECT_NAME}_point_stamped_joystick
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -98,12 +98,12 @@ install(TARGETS
 )
 
 install(TARGETS
-  ${PROJECT_NAME}_delta_direct_joystick
+  ${PROJECT_NAME}_point_stamped_mirror_joystick
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
 install(TARGETS
-  ${PROJECT_NAME}_twist_linear_angular
+  ${PROJECT_NAME}_cmd_vel_mirror_joystick
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
