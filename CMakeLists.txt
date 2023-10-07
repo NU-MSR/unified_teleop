@@ -41,20 +41,6 @@ target_link_libraries(${PROJECT_NAME}_point_stamped_joystick
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
-# mobile_joystick
-add_executable(${PROJECT_NAME}_mobile_joystick src/mobile_joystick.cpp)
-set_target_properties(${PROJECT_NAME}_mobile_joystick
-  PROPERTIES
-  OUTPUT_NAME mobile_joystick
-  PREFIX ""
-)
-ament_target_dependencies(${PROJECT_NAME}_mobile_joystick
-  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
-)
-target_link_libraries(${PROJECT_NAME}_mobile_joystick
-  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
-)
-
 # point_stamped_mirror_joystick
 add_executable(${PROJECT_NAME}_point_stamped_mirror_joystick src/point_stamped_mirror_joystick.cpp)
 set_target_properties(${PROJECT_NAME}_point_stamped_mirror_joystick
@@ -83,6 +69,20 @@ target_link_libraries(${PROJECT_NAME}_cmd_vel_mirror_joystick
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
+# twist_merger
+add_executable(${PROJECT_NAME}_twist_merger src/twist_merger.cpp)
+set_target_properties(${PROJECT_NAME}_twist_merger
+  PROPERTIES
+  OUTPUT_NAME twist_merger
+  PREFIX ""
+)
+ament_target_dependencies(${PROJECT_NAME}_twist_merger
+  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+)
+target_link_libraries(${PROJECT_NAME}_twist_merger
+  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############
@@ -93,17 +93,17 @@ install(TARGETS
 )
 
 install(TARGETS
-  ${PROJECT_NAME}_mobile_joystick
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
-)
-
-install(TARGETS
   ${PROJECT_NAME}_point_stamped_mirror_joystick
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
 install(TARGETS
   ${PROJECT_NAME}_cmd_vel_mirror_joystick
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS
+  ${PROJECT_NAME}_twist_merger
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
