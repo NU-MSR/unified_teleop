@@ -1,3 +1,5 @@
+/// NEED TO UPDATE DOCUMENTATAION HERE
+
 /// @file
 /// @brief Publishes a series of series commands for the delta robot to move based on inputs from the gamepad
 /// 
@@ -9,7 +11,7 @@
 ///
 /// @section Parameters
 ///  `~/enable_control (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/reset_delta (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/reset_cmdvel_ (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
 ///  `~/x_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
 ///  `~/x_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
 ///  `~/y_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
@@ -168,7 +170,7 @@ int main(int argc, char * argv[])
     auto joy_sub = node->create_subscription<sensor_msgs::msg::Joy>("joy", 10, joy_callback);
 
     // Publisher
-    auto delta_pos_pub = node->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 100); // puhlishing rate has to be 100, otherwise delta displays incorrect behaviour
+    auto cmdvel_pos_pub = node->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 100); // puhlishing rate has to be 100, otherwise delta displays incorrect behaviour
     
     //
     // Declaring and getting parameters
@@ -265,7 +267,7 @@ int main(int argc, char * argv[])
                 command = roll_dec(roll_dec_input, command);
             }
 
-            delta_pos_pub->publish(command);
+            cmdvel_pos_pub->publish(command);
         }
         rclcpp::spin_some(node);
     }

@@ -8,14 +8,14 @@
 ///   joy (sensor_msgs/Joy) - A message containing current state of the gamepad inputs
 ///
 /// @section Parameters
-///  `~/enable_delta (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/reset_delta (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/delta_forward (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/delta_backward (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/delta_left (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/delta_right (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/delta_up (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/delta_down (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/enable_control (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/reset_pntstmpd (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/pntstmpd_forward (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/pntstmpd_backward (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/pntstmpd_left (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/pntstmpd_right (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/pntstmpd_up (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/pntstmpd_down (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
 ///
 ///  `~/x_scale (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
 ///  `~/y_scale (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
@@ -45,7 +45,8 @@ static float x_scale = 1.0;
 static float y_scale = 1.0;
 static float z_scale = 1.0;
 
-static const float boundary_radius = 0.13f; // number based on same parameter in delta_position.cpp
+// NEED TO ADD BOUNDARY RADIUS PARAMETER
+static const float boundary_radius = 0.13f; // number based on same parameter in pntstmpd_position.cpp
 static const float base_x_increment = 2 * std::pow(10, -5); // increment value chosen arbitrarily
 static const float base_y_increment = 2 * std::pow(10, -5); // increment value chosen arbitrarily
 static const float base_z_increment = 2 * std::pow(10, -5); // increment value chosen arbitrarily
@@ -94,12 +95,12 @@ static void joy_callback(const sensor_msgs::msg::Joy & joy_state);
 
 /// @brief Indicates whether delta movement has been enabled based on controller input
 /// @param input - The controller input that will indicate whether the delta is enabled
-static bool delta_enabled(MovementInput input);
+static bool pntstmpd_enabled(MovementInput input);
 
 /// @brief Resets the delta back to its original center position based on controller input
 /// @param input - The controller input that will indicate whether the delta will reset its position
 /// @param input_command - The message that will be overwritten with center position coordinates for the delta
-static geometry_msgs::msg::PointStamped delta_reset(const MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped pntstmpd_reset(const MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Sets a given input command to contain a given position
 /// @param input_command - The message that will be overwritten with center position coordinates for the delta
@@ -108,32 +109,32 @@ static geometry_msgs::msg::PointStamped reset_position();
 /// @brief Based on the current/input position, returns coords that move the delta's position forward
 /// @param input - The controller input that will indicate whether the delta will move forward
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped delta_forward(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped pntstmpd_forward(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Based on the current/input position, returns coords that move the delta's position backward
 /// @param input - The controller input that will indicate whether the delta will move backward
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped delta_backward(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped pntstmpd_backward(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Based on the current/input position, returns coords that move the delta's position left
 /// @param input - The controller input that will indicate whether the delta will move left
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped delta_left(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped pntstmpd_left(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Based on the current/input position, returns coords that move the delta's position right
 /// @param input - The controller input that will indicate whether the delta will move right
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped delta_right(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped pntstmpd_right(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Based on the current/input position, returns coords that move the delta's position up
 /// @param input - The controller input that will indicate whether the delta will move up
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped delta_up(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped pntstmpd_up(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Based on the current/input position, returns coords that move the delta's position down
 /// @param input - The controller input that will indicate whether the delta will move down
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped delta_down(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped pntstmpd_down(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 int main(int argc, char * argv[])
 {
@@ -146,20 +147,20 @@ int main(int argc, char * argv[])
     auto joy_sub = node->create_subscription<sensor_msgs::msg::Joy>("joy", 10, joy_callback);
 
     // Publisher
-    auto delta_pos_pub = node->create_publisher<geometry_msgs::msg::PointStamped>("delta/desired_position", 100); // puhlishing rate has to be 100, otherwise delta displays incorrect behaviour
+    auto pntstmpd_pos_pub = node->create_publisher<geometry_msgs::msg::PointStamped>("delta/desired_position", 100); // puhlishing rate has to be 100, otherwise delta displays incorrect behaviour
     
     //
     // Declaring and getting parameters
     //
     // Function -> Controller input assignments from control scheme parameters
-    const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_delta", "UNUSED", *node, "Button assigned to enable delta movement");
-    const std::string reset_assignment = rosnu::declare_and_get_param<std::string>("reset_delta", "UNUSED", *node, "Button assigned to reset delta position");
-    const std::string forward_assignment = rosnu::declare_and_get_param<std::string>("delta_forward", "UNUSED", *node, "Button assigned to move delta forward");
-    const std::string backward_assignment = rosnu::declare_and_get_param<std::string>("delta_backward", "UNUSED", *node, "Button assigned to move delta backward");
-    const std::string left_assignment = rosnu::declare_and_get_param<std::string>("delta_left", "UNUSED", *node, "Button assigned to move delta left");
-    const std::string right_assignment = rosnu::declare_and_get_param<std::string>("delta_right", "UNUSED", *node, "Button assigned to move delta right");
-    const std::string up_assignment = rosnu::declare_and_get_param<std::string>("delta_up", "UNUSED", *node, "Button assigned to move delta up");
-    const std::string down_assignment = rosnu::declare_and_get_param<std::string>("delta_down", "UNUSED", *node, "Button assigned to move delta down");
+    const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *node, "Button assigned to enable delta movement");
+    const std::string reset_assignment = rosnu::declare_and_get_param<std::string>("reset_pntstmpd", "UNUSED", *node, "Button assigned to reset delta position");
+    const std::string forward_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_forward", "UNUSED", *node, "Button assigned to move delta forward");
+    const std::string backward_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_backward", "UNUSED", *node, "Button assigned to move delta backward");
+    const std::string left_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_left", "UNUSED", *node, "Button assigned to move delta left");
+    const std::string right_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_right", "UNUSED", *node, "Button assigned to move delta right");
+    const std::string up_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_up", "UNUSED", *node, "Button assigned to move delta up");
+    const std::string down_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_down", "UNUSED", *node, "Button assigned to move delta down");
     // Additional parameters
     x_scale = rosnu::declare_and_get_param<float>("x_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
     y_scale = rosnu::declare_and_get_param<float>("y_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
@@ -208,17 +209,17 @@ int main(int argc, char * argv[])
 
         if(fresh_joy_state)
         {
-            if(delta_enabled(enable_input))
+            if(pntstmpd_enabled(enable_input))
             {
                 geometry_msgs::msg::PointStamped temp_command = command;
 
-                temp_command = delta_reset(reset_input, temp_command);
-                temp_command = delta_forward(forward_input, temp_command);
-                temp_command = delta_backward(backward_input, temp_command);
-                temp_command = delta_left(left_input, temp_command);
-                temp_command = delta_right(right_input, temp_command);
-                temp_command = delta_up(up_input, temp_command);
-                temp_command = delta_down(down_input, temp_command);
+                temp_command = pntstmpd_reset(reset_input, temp_command);
+                temp_command = pntstmpd_forward(forward_input, temp_command);
+                temp_command = pntstmpd_backward(backward_input, temp_command);
+                temp_command = pntstmpd_left(left_input, temp_command);
+                temp_command = pntstmpd_right(right_input, temp_command);
+                temp_command = pntstmpd_up(up_input, temp_command);
+                temp_command = pntstmpd_down(down_input, temp_command);
 
                 /// @brief Calculate the `home_z_position`
                 /// The `home_z_position` is calculated by taking the average of the minimum and maximum Z axis parameters. This gives us the center position in the Z axis which is considered the "home" position.
@@ -238,7 +239,7 @@ int main(int argc, char * argv[])
             }
             command.header.stamp = current_time;
 
-            delta_pos_pub->publish(command);
+            pntstmpd_pos_pub->publish(command);
         }
         rclcpp::spin_some(node);
     }
@@ -285,12 +286,12 @@ static MovementInput function_input(std::string input_assignment, std::map<std::
     }
 }
 
-static bool delta_enabled(const MovementInput input)
+static bool pntstmpd_enabled(const MovementInput input)
 {
     return latest_joy_state.buttons.at(input.index);
 }
 
-static geometry_msgs::msg::PointStamped delta_reset(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped pntstmpd_reset(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     if (input.type == UNUSED_TYPE)
     {
@@ -316,7 +317,7 @@ static geometry_msgs::msg::PointStamped reset_position()
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped delta_forward(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped pntstmpd_forward(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
 
@@ -338,7 +339,7 @@ static geometry_msgs::msg::PointStamped delta_forward(const MovementInput input,
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped delta_backward(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped pntstmpd_backward(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
     
@@ -360,7 +361,7 @@ static geometry_msgs::msg::PointStamped delta_backward(const MovementInput input
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped delta_left(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped pntstmpd_left(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
     
@@ -382,7 +383,7 @@ static geometry_msgs::msg::PointStamped delta_left(const MovementInput input, ge
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped delta_right(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped pntstmpd_right(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
     
@@ -404,7 +405,7 @@ static geometry_msgs::msg::PointStamped delta_right(const MovementInput input, g
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped delta_up(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped pntstmpd_up(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
     
@@ -426,7 +427,7 @@ static geometry_msgs::msg::PointStamped delta_up(const MovementInput input, geom
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped delta_down(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped pntstmpd_down(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
     

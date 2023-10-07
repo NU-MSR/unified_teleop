@@ -1,3 +1,5 @@
+/// NEED TO UPDATE DOCUMENTATION HERE
+
 /// @file
 /// @brief Publishes a series of series commands for the delta robot to move based on inputs from the gamepad
 /// 
@@ -6,22 +8,6 @@
 ///
 /// @section Subscribers
 ///   joy (sensor_msgs/Joy) - A message containing current state of the gamepad inputs
-///
-/// @section Parameters
-///  `~/enable_control (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/reset_delta (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/x_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/x_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/y_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/y_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/z_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/z_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///
-///  `~/x_linear_scale (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
-///  `~/y_linear_scale (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
-///  `~/z_linear_scale (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
-///
-///  `~/input_device_config_file (std::string) [default "dualshock4_mapping"]`      - Chosen input device config file
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/twist.hpp"
