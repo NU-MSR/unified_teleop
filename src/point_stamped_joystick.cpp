@@ -2,7 +2,7 @@
 /// @brief Publishes a series of series commands for the delta robot to move based on inputs from the gamepad
 /// 
 /// @section Publishers
-///   delta/desired_position (geometry_msgs/PointStamped) - The desired position of the end effector
+///   desired_position (geometry_msgs/PointStamped) - The desired position of the end effector
 ///
 /// @section Subscribers
 ///   joy (sensor_msgs/Joy) - A message containing current state of the gamepad inputs
@@ -147,7 +147,7 @@ int main(int argc, char * argv[])
     auto joy_sub = node->create_subscription<sensor_msgs::msg::Joy>("joy", 10, joy_callback);
 
     // Publisher
-    auto pntstmpd_pos_pub = node->create_publisher<geometry_msgs::msg::PointStamped>("delta/desired_position", 100); // puhlishing rate has to be 100, otherwise delta displays incorrect behaviour
+    auto pntstmpd_pos_pub = node->create_publisher<geometry_msgs::msg::PointStamped>("desired_position", 100); // puhlishing rate has to be 100, otherwise delta displays incorrect behaviour
     
     //
     // Declaring and getting parameters
