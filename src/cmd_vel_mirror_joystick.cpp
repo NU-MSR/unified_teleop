@@ -1,27 +1,43 @@
 /// NEED TO UPDATE DOCUMENTATAION HERE
 
 /// @file
-/// @brief Publishes a series of series commands for the delta robot to move based on inputs from the gamepad
+/// @brief Publishes a series of cmd_vel commands for a robot to receive based on inputs from a control device
 /// 
 /// @section Publishers
-///   cmd_vel (geometry_msgs/Twist) - A commanded twist for a 2D mobile robot (all values besides linear.x, linear.y, and angular.z must be zero)
+///   cmd_vel (geometry_msgs/Twist) - A commanded twist message for the robot
 ///
 /// @section Subscribers
-///   joy (sensor_msgs/Joy) - A message containing current state of the gamepad inputs
+///   joy (sensor_msgs/Joy) - A message containing current state of the control device's inputs
 ///
 /// @section Parameters
-///  `~/enable_control (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/reset_cmdvel_ (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/x_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/x_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/y_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/y_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/z_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/z_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/enable_control (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/alt_enable (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/reset_cmdvel_ (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/x_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/x_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/y_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/y_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/z_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/z_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/yaw_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/yaw_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/pitch_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/pitch_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/roll_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
+///  `~/roll_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control this function
 ///
-///  `~/x_linear_scale (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
-///  `~/y_linear_scale (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
-///  `~/z_linear_scale (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
+///  `~/x_linear_max (float) [default 1.0]`      - The maximum Twist value for movement speed along that axis of movement
+///  `~/y_linear_max (float) [default 1.0]`      - The maximum Twist value for movement speed along that axis of movement
+///  `~/z_linear_max (float) [default 1.0]`      - The maximum Twist value for movement speed along that axis of movement
+///  `~/yaw_angular_max (float) [default 1.0]`      - The maximum Twist value for movement speed along that axis of rotation
+///  `~/pitch_angular_max (float) [default 1.0]`      - The maximum Twist value for movement speed along that axis of rotation
+///  `~/roll_angular_max (float) [default 1.0]`      - The maximum Twist value for movement speed along that axis of rotation
+///  `~/x_linear_max (float) [default 1.0]`      - The alternative maximum Twist value for movement speed along that axis of movement
+///  `~/y_linear_max (float) [default 1.0]`      - The alternative maximum Twist value for movement speed along that axis of movement
+///  `~/z_linear_max (float) [default 1.0]`      - The alternative maximum Twist value for movement speed along that axis of movement
+///  `~/yaw_angular_max (float) [default 1.0]`      - The alternative maximum Twist value for movement speed along that axis of rotation
+///  `~/pitch_angular_max (float) [default 1.0]`      - The alternative maximum Twist value for movement speed along that axis of rotation
+///  `~/roll_angular_max (float) [default 1.0]`      - The alternative maximum Twist value for movement speed along that axis of rotation
 ///
 ///  `~/input_device_config_file (std::string) [default "dualshock4_mapping"]`      - Chosen input device config file
 
@@ -43,12 +59,18 @@ using std::string;
 static geometry_msgs::msg::Twist command;
 static sensor_msgs::msg::Joy latest_joy_state;
 static bool fresh_joy_state = false;
-static float x_linear_scale = 1.0;
-static float y_linear_scale = 1.0;
-static float z_linear_scale = 1.0;
-static float yaw_angular_scale = 1.0;
-static float pitch_angular_scale = 1.0;
-static float roll_angular_scale = 1.0;
+static float x_linear_max = 1.0;
+static float y_linear_max = 1.0;
+static float z_linear_max = 1.0;
+static float yaw_angular_max = 1.0;
+static float pitch_angular_max = 1.0;
+static float roll_angular_max = 1.0;
+static float alt_x_linear_max = 1.0;
+static float alt_y_linear_max = 1.0;
+static float alt_z_linear_max = 1.0;
+static float alt_yaw_angular_max = 1.0;
+static float alt_pitch_angular_max = 1.0;
+static float alt_roll_angular_max = 1.0;
 
 /// @brief The type of input a particular device input can be
 enum class InputType
@@ -177,25 +199,32 @@ int main(int argc, char * argv[])
     //
     // Function -> Controller input assignments from control scheme parameters
     const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *node, "Button assigned to enable delta movement");
-    const std::string x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *node, "Button assigned to move delta forward");
-    const std::string x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *node, "Button assigned to move delta backward");
-    const std::string y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *node, "Button assigned to move delta left");
-    const std::string y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *node, "Button assigned to move delta right");
-    const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *node, "Button assigned to move delta up");
-    const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *node, "Button assigned to move delta down");
-    const std::string yaw_inc_assignment = rosnu::declare_and_get_param<std::string>("yaw_inc", "UNUSED", *node, "Button assigned to move delta forward");
-    const std::string yaw_dec_assignment = rosnu::declare_and_get_param<std::string>("yaw_dec", "UNUSED", *node, "Button assigned to move delta backward");
-    const std::string pitch_inc_assignment = rosnu::declare_and_get_param<std::string>("pitch_inc", "UNUSED", *node, "Button assigned to move delta left");
-    const std::string pitch_dec_assignment = rosnu::declare_and_get_param<std::string>("pitch_dec", "UNUSED", *node, "Button assigned to move delta right");
-    const std::string roll_inc_assignment = rosnu::declare_and_get_param<std::string>("roll_inc", "UNUSED", *node, "Button assigned to move delta up");
-    const std::string roll_dec_assignment = rosnu::declare_and_get_param<std::string>("roll_dec", "UNUSED", *node, "Button assigned to move delta down");
+    const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *node, "Button assigned to activate alternative max values");
+    const std::string x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *node, "Button assigned to move robot forward");
+    const std::string x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *node, "Button assigned to move robot backward");
+    const std::string y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *node, "Button assigned to move robot left");
+    const std::string y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *node, "Button assigned to move robot right");
+    const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *node, "Button assigned to move robot up");
+    const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *node, "Button assigned to move robot down");
+    const std::string yaw_inc_assignment = rosnu::declare_and_get_param<std::string>("yaw_inc", "UNUSED", *node, "Button assigned to increase the yaw of the robot");
+    const std::string yaw_dec_assignment = rosnu::declare_and_get_param<std::string>("yaw_dec", "UNUSED", *node, "Button assigned to decrease the yaw of the robot");
+    const std::string pitch_inc_assignment = rosnu::declare_and_get_param<std::string>("pitch_inc", "UNUSED", *node, "Button assigned to increase the pitch of the robot");
+    const std::string pitch_dec_assignment = rosnu::declare_and_get_param<std::string>("pitch_dec", "UNUSED", *node, "Button assigned to decrease the pitch of the robot");
+    const std::string roll_inc_assignment = rosnu::declare_and_get_param<std::string>("roll_inc", "UNUSED", *node, "Button assigned to increase the roll of the robot");
+    const std::string roll_dec_assignment = rosnu::declare_and_get_param<std::string>("roll_dec", "UNUSED", *node, "Button assigned to decrease the roll of the robot");
     // Additional parameters
-    x_linear_scale = rosnu::declare_and_get_param<float>("x_linear_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
-    y_linear_scale = rosnu::declare_and_get_param<float>("y_linear_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
-    z_linear_scale = rosnu::declare_and_get_param<float>("z_linear_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
-    yaw_angular_scale = rosnu::declare_and_get_param<float>("yaw_angular_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
-    pitch_angular_scale = rosnu::declare_and_get_param<float>("pitch_angular_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
-    roll_angular_scale = rosnu::declare_and_get_param<float>("roll_angular_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
+    x_linear_max = rosnu::declare_and_get_param<float>("x_linear_max", 1.0f, *node, "The maximum output value along that axis of movement");
+    y_linear_max = rosnu::declare_and_get_param<float>("y_linear_max", 1.0f, *node, "The maximum output value along that axis of movement");
+    z_linear_max = rosnu::declare_and_get_param<float>("z_linear_max", 1.0f, *node, "The maximum output value along that axis of movement");
+    yaw_angular_max = rosnu::declare_and_get_param<float>("yaw_angular_max", 1.0f, *node, "The maximum output value along that axis of movement");
+    pitch_angular_max = rosnu::declare_and_get_param<float>("pitch_angular_max", 1.0f, *node, "The maximum output value along that axis of movement");
+    roll_angular_max = rosnu::declare_and_get_param<float>("roll_angular_max", 1.0f, *node, "The maximum output value along that axis of movement");
+    alt_x_linear_max = rosnu::declare_and_get_param<float>("x_linear_max", 1.0f, *node, "The alternative maximum output value along that axis of movement");
+    alt_y_linear_max = rosnu::declare_and_get_param<float>("y_linear_max", 1.0f, *node, "The alternative maximum output value along that axis of movement");
+    alt_z_linear_max = rosnu::declare_and_get_param<float>("z_linear_max", 1.0f, *node, "The alternative maximum output value along that axis of movement");
+    alt_yaw_angular_max = rosnu::declare_and_get_param<float>("yaw_angular_max", 1.0f, *node, "The alternative maximum output value along that axis of movement");
+    alt_pitch_angular_max = rosnu::declare_and_get_param<float>("pitch_angular_max", 1.0f, *node, "The alternative maximum output value along that axis of movement");
+    alt_roll_angular_max = rosnu::declare_and_get_param<float>("roll_angular_max", 1.0f, *node, "The alternative maximum output value along that axis of movement");
     // Getting the input device config from launch file parameters
     const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *node, "Chosen input device config file");
     
@@ -349,21 +378,21 @@ static geometry_msgs::msg::Twist x_axis_inc(const MovementInput input, geometry_
             axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.linear.x = x_linear_scale * axis_reading;
+                new_command.linear.x = x_linear_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.linear.x = x_linear_scale * trigger_reading;
+                new_command.linear.x = x_linear_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.linear.x = x_linear_scale * button_reading;
+                new_command.linear.x = x_linear_max * button_reading;
             }
             break;
     }
@@ -387,21 +416,21 @@ static geometry_msgs::msg::Twist x_axis_dec(const MovementInput input, geometry_
             axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.linear.x = x_linear_scale * axis_reading;
+                new_command.linear.x = x_linear_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.linear.x = -1 * x_linear_scale * trigger_reading;
+                new_command.linear.x = -1 * x_linear_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.linear.x = -1 * x_linear_scale * button_reading;
+                new_command.linear.x = -1 * x_linear_max * button_reading;
             }
             break;
     }
@@ -425,21 +454,21 @@ static geometry_msgs::msg::Twist y_axis_inc(const MovementInput input, geometry_
             axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.linear.y = y_linear_scale * axis_reading;
+                new_command.linear.y = y_linear_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.linear.y = y_linear_scale * trigger_reading;
+                new_command.linear.y = y_linear_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.linear.y = y_linear_scale * button_reading;
+                new_command.linear.y = y_linear_max * button_reading;
             }
             break;
     }
@@ -463,21 +492,21 @@ static geometry_msgs::msg::Twist y_axis_dec(const MovementInput input, geometry_
             axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.linear.y = y_linear_scale * axis_reading;
+                new_command.linear.y = y_linear_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.linear.y = -1 * y_linear_scale * trigger_reading;
+                new_command.linear.y = -1 * y_linear_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.linear.y = -1 * y_linear_scale * button_reading;
+                new_command.linear.y = -1 * y_linear_max * button_reading;
             }
             break;
     }
@@ -501,21 +530,21 @@ static geometry_msgs::msg::Twist z_axis_inc(const MovementInput input, geometry_
             axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.linear.z = z_linear_scale * axis_reading;
+                new_command.linear.z = z_linear_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.linear.z = z_linear_scale * trigger_reading;
+                new_command.linear.z = z_linear_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.linear.z = z_linear_scale * button_reading;
+                new_command.linear.z = z_linear_max * button_reading;
             }
             break;
     }
@@ -539,21 +568,21 @@ static geometry_msgs::msg::Twist z_axis_dec(const MovementInput input, geometry_
             axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.linear.z = z_linear_scale * axis_reading;
+                new_command.linear.z = z_linear_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.linear.z = -1 * z_linear_scale * trigger_reading;
+                new_command.linear.z = -1 * z_linear_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.linear.z = -1 * z_linear_scale * button_reading;
+                new_command.linear.z = -1 * z_linear_max * button_reading;
             }
             break;
     }
@@ -577,21 +606,21 @@ static geometry_msgs::msg::Twist yaw_inc(const MovementInput input, geometry_msg
             axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.angular.z = yaw_angular_scale * axis_reading;
+                new_command.angular.z = yaw_angular_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.angular.z = yaw_angular_scale * trigger_reading;
+                new_command.angular.z = yaw_angular_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.angular.z = yaw_angular_scale * button_reading;
+                new_command.angular.z = yaw_angular_max * button_reading;
             }
             break;
     }
@@ -615,21 +644,21 @@ static geometry_msgs::msg::Twist yaw_dec(const MovementInput input, geometry_msg
             axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.angular.z = yaw_angular_scale * axis_reading;
+                new_command.angular.z = yaw_angular_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.angular.z = -1 * yaw_angular_scale * trigger_reading;
+                new_command.angular.z = -1 * yaw_angular_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.angular.z = -1 * yaw_angular_scale * button_reading;
+                new_command.angular.z = -1 * yaw_angular_max * button_reading;
             }
             break;
     }
@@ -653,21 +682,21 @@ static geometry_msgs::msg::Twist pitch_inc(const MovementInput input, geometry_m
             axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.angular.y = pitch_angular_scale * axis_reading;
+                new_command.angular.y = pitch_angular_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.angular.y = pitch_angular_scale * trigger_reading;
+                new_command.angular.y = pitch_angular_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.angular.y = pitch_angular_scale * button_reading;
+                new_command.angular.y = pitch_angular_max * button_reading;
             }
             break;
     }
@@ -691,21 +720,21 @@ static geometry_msgs::msg::Twist pitch_dec(const MovementInput input, geometry_m
             axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.angular.y = pitch_angular_scale * axis_reading;
+                new_command.angular.y = pitch_angular_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.angular.y = -1 * pitch_angular_scale * trigger_reading;
+                new_command.angular.y = -1 * pitch_angular_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.angular.y = -1 * pitch_angular_scale * button_reading;
+                new_command.angular.y = -1 * pitch_angular_max * button_reading;
             }
             break;
     }
@@ -729,21 +758,21 @@ static geometry_msgs::msg::Twist roll_inc(const MovementInput input, geometry_ms
             axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.angular.x = roll_angular_scale * axis_reading;
+                new_command.angular.x = roll_angular_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.angular.x = roll_angular_scale * trigger_reading;
+                new_command.angular.x = roll_angular_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.angular.x = roll_angular_scale * button_reading;
+                new_command.angular.x = roll_angular_max * button_reading;
             }
             break;
     }
@@ -767,21 +796,21 @@ static geometry_msgs::msg::Twist roll_dec(const MovementInput input, geometry_ms
             axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
             if (axis_reading != 0.0f)
             {
-                new_command.angular.x = roll_angular_scale * axis_reading;
+                new_command.angular.x = roll_angular_max * axis_reading;
             }
             break;
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
             {
-                new_command.angular.x = -1 * roll_angular_scale * trigger_reading;
+                new_command.angular.x = -1 * roll_angular_max * trigger_reading;
             }
             break;
         case InputType::Button:
             button_reading = latest_joy_state.buttons.at(input.index);
             if (button_reading != 0.0f)
             {
-                new_command.angular.x = -1 * roll_angular_scale * button_reading;
+                new_command.angular.x = -1 * roll_angular_max * button_reading;
             }
             break;
     }
