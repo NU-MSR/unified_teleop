@@ -73,12 +73,12 @@ static float z_max = 1.0;
 static float yaw_max = 1.0;
 static float pitch_max = 1.0;
 static float roll_max = 1.0;
-static float alt_x_max = 0.5;
-static float alt_y_max = 0.5;
-static float alt_z_max = 0.5;
-static float alt_yaw_max = 0.5;
-static float alt_pitch_max = 0.5;
-static float alt_roll_max = 0.5;
+static float alt_x_max = 0.25;
+static float alt_y_max = 0.25;
+static float alt_z_max = 0.25;
+static float alt_yaw_max = 0.25;
+static float alt_pitch_max = 0.25;
+static float alt_roll_max = 0.25;
 
 /// @brief The type of input a particular device input can be
 enum class InputType
@@ -231,12 +231,12 @@ int main(int argc, char * argv[])
     yaw_max = rosnu::declare_and_get_param<float>("yaw_max", 1.0f, *node, "The maximum output value along that axis of movement");
     pitch_max = rosnu::declare_and_get_param<float>("pitch_max", 1.0f, *node, "The maximum output value along that axis of movement");
     roll_max = rosnu::declare_and_get_param<float>("roll_max", 1.0f, *node, "The maximum output value along that axis of movement");
-    alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.5f, *node, "The alternative maximum output value along that axis of movement");
-    alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.5f, *node, "The alternative maximum output value along that axis of movement");
-    alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.5f, *node, "The alternative maximum output value along that axis of movement");
-    alt_yaw_max = rosnu::declare_and_get_param<float>("alt_yaw_max", 0.5f, *node, "The alternative maximum output value along that axis of movement");
-    alt_pitch_max = rosnu::declare_and_get_param<float>("alt_pitch_max", 0.5f, *node, "The alternative maximum output value along that axis of movement");
-    alt_roll_max = rosnu::declare_and_get_param<float>("alt_roll_max", 0.5f, *node, "The alternative maximum output value along that axis of movement");
+    alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+    alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+    alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+    alt_yaw_max = rosnu::declare_and_get_param<float>("alt_yaw_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+    alt_pitch_max = rosnu::declare_and_get_param<float>("alt_pitch_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+    alt_roll_max = rosnu::declare_and_get_param<float>("alt_roll_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
     // Getting the input device config from launch file parameters
     const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *node, "Chosen input device config file");
     
