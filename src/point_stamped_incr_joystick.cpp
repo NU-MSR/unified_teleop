@@ -10,16 +10,16 @@
 /// @section Parameters
 ///  `~/enable_control (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
 ///  `~/reset_pntstmpd (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/pntstmpd_forward (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/pntstmpd_backward (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/pntstmpd_left (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/pntstmpd_right (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/pntstmpd_up (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
-///  `~/pntstmpd_down (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/x_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/x_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/y_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/y_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/z_axis_inc (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
+///  `~/z_axis_dec (std::string) [default "UNUSED"]`      - The name of the controller input that will control its respective function
 ///
-///  `~/x_scale (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
-///  `~/y_scale (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
-///  `~/z_scale (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
+///  `~/curr_x_incr_mult (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
+///  `~/curr_y_incr_mult (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
+///  `~/curr_z_incr_mult (float) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
 ///
 ///  `~/input_device (std::string) [default 1.0]`      - The scale in which the movement speed is multiplied by along that axis of movement
 
@@ -41,15 +41,19 @@ using std::string;
 static geometry_msgs::msg::PointStamped command;
 static sensor_msgs::msg::Joy latest_joy_state;
 static bool fresh_joy_state = false;
-static float x_scale = 1.0;
-static float y_scale = 1.0;
-static float z_scale = 1.0;
 
-// NEED TO ADD BOUNDARY RADIUS PARAMETER
-static const float boundary_radius = 0.13f; // number based on same parameter in pntstmpd_position.cpp
-static const float base_x_increment = 2 * std::pow(10, -5); // increment value chosen arbitrarily
-static const float base_y_increment = 2 * std::pow(10, -5); // increment value chosen arbitrarily
-static const float base_z_increment = 2 * std::pow(10, -5); // increment value chosen arbitrarily
+float curr_x_max = 1.0;
+float curr_y_max = 1.0;
+float curr_z_max = 1.0;
+static float x_max;
+static float y_max;
+static float z_max;
+static float alt_x_max;
+static float alt_y_max;
+static float alt_z_max;
+
+static const float incr_denom = 1 * std::pow(10, 5); // increment value chosen arbitrarily
+static float incr_mult = 1.0;
 
 /// @brief The type of input a particular device input can be
 enum class InputType
@@ -95,46 +99,50 @@ static void joy_callback(const sensor_msgs::msg::Joy & joy_state);
 
 /// @brief Indicates whether delta movement has been enabled based on controller input
 /// @param input - The controller input that will indicate whether the delta is enabled
-static bool pntstmpd_enabled(MovementInput input);
+static bool control_enabled(MovementInput input);
 
-/// @brief Resets the delta back to its original center position based on controller input
-/// @param input - The controller input that will indicate whether the delta will reset its position
-/// @param input_command - The message that will be overwritten with center position coordinates for the delta
-static geometry_msgs::msg::PointStamped pntstmpd_reset(const MovementInput input, geometry_msgs::msg::PointStamped temp_command);
-
-/// @brief Sets a given input command to contain a given position
-/// @param input_command - The message that will be overwritten with center position coordinates for the delta
-static geometry_msgs::msg::PointStamped reset_position();
+/// @brief Indicates whether alternative movement max values has been enabled based on controller input
+/// @param input - The controller input that will indicate whether this function is activated
+static void alt_enabled(MovementInput input);
 
 /// @brief Based on the current/input position, returns coords that move the delta's position forward
 /// @param input - The controller input that will indicate whether the delta will move forward
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped pntstmpd_forward(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped axes_reset(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+
+/// @brief Sets a given input command to contain a given position
+/// @param input_command - The message that will be overwritten with center position coordinates for the delta
+static geometry_msgs::msg::PointStamped zero_command();
+
+/// @brief Based on the current/input position, returns coords that move the delta's position forward
+/// @param input - The controller input that will indicate whether the delta will move forward
+/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+static geometry_msgs::msg::PointStamped x_axis_inc(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Based on the current/input position, returns coords that move the delta's position backward
 /// @param input - The controller input that will indicate whether the delta will move backward
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped pntstmpd_backward(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped x_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Based on the current/input position, returns coords that move the delta's position left
 /// @param input - The controller input that will indicate whether the delta will move left
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped pntstmpd_left(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped y_axis_inc(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Based on the current/input position, returns coords that move the delta's position right
 /// @param input - The controller input that will indicate whether the delta will move right
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped pntstmpd_right(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped y_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Based on the current/input position, returns coords that move the delta's position up
 /// @param input - The controller input that will indicate whether the delta will move up
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped pntstmpd_up(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped z_axis_inc(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Based on the current/input position, returns coords that move the delta's position down
 /// @param input - The controller input that will indicate whether the delta will move down
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped pntstmpd_down(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+static geometry_msgs::msg::PointStamped z_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 int main(int argc, char * argv[])
 {
@@ -154,17 +162,22 @@ int main(int argc, char * argv[])
     //
     // Function -> Controller input assignments from control scheme parameters
     const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *node, "Button assigned to enable delta movement");
-    const std::string reset_assignment = rosnu::declare_and_get_param<std::string>("reset_pntstmpd", "UNUSED", *node, "Button assigned to reset delta position");
-    const std::string forward_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_forward", "UNUSED", *node, "Button assigned to move delta forward");
-    const std::string backward_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_backward", "UNUSED", *node, "Button assigned to move delta backward");
-    const std::string left_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_left", "UNUSED", *node, "Button assigned to move delta left");
-    const std::string right_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_right", "UNUSED", *node, "Button assigned to move delta right");
-    const std::string up_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_up", "UNUSED", *node, "Button assigned to move delta up");
-    const std::string down_assignment = rosnu::declare_and_get_param<std::string>("pntstmpd_down", "UNUSED", *node, "Button assigned to move delta down");
+    const std::string reset_assignment = rosnu::declare_and_get_param<std::string>("reset_enable", "UNUSED", *node, "Button assigned to reset delta position");
+    const std::string alt_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *node, "Button assigned to activate alternative max values");
+    const std::string x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *node, "Button assigned to move robot forward");
+    const std::string x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *node, "Button assigned to move robot backward");
+    const std::string y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *node, "Button assigned to move robot left");
+    const std::string y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *node, "Button assigned to move robot right");
+    const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *node, "Button assigned to move robot up");
+    const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *node, "Button assigned to move robot down");
     // Additional parameters
-    x_scale = rosnu::declare_and_get_param<float>("x_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
-    y_scale = rosnu::declare_and_get_param<float>("y_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
-    z_scale = rosnu::declare_and_get_param<float>("z_scale", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
+    x_max = rosnu::declare_and_get_param<float>("x_max", 1.0f, *node, "The maximum output value along that axis of movement");
+    y_max = rosnu::declare_and_get_param<float>("y_max", 1.0f, *node, "The maximum output value along that axis of movement");
+    z_max = rosnu::declare_and_get_param<float>("z_max", 1.0f, *node, "The maximum output value along that axis of movement");
+    alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+    alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+    alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+    incr_mult = rosnu::declare_and_get_param<float>("incr_mult", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
     // Getting the input device config from launch file parameters
     const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *node, "Chosen input device config file");
     
@@ -187,21 +200,23 @@ int main(int argc, char * argv[])
     MovementInput enable_input = function_input(enable_assignment, button_map);
     // Reset Delta position
     MovementInput reset_input = function_input(reset_assignment, button_map);
+    // Enabling Delta movement
+    MovementInput alt_input = function_input(alt_assignment, button_map);
     // Moving Delta forward
-    MovementInput forward_input = function_input(forward_assignment, button_map);
+    MovementInput x_inc_input = function_input(x_inc_assignment, button_map);
     // Moving Delta backward
-    MovementInput backward_input = function_input(backward_assignment, button_map);
+    MovementInput x_dec_input = function_input(x_dec_assignment, button_map);
     // Moving Delta left
-    MovementInput left_input = function_input(left_assignment, button_map);
+    MovementInput y_inc_input = function_input(y_inc_assignment, button_map);
     // Moving Delta right
-    MovementInput right_input = function_input(right_assignment, button_map);
+    MovementInput y_dec_input = function_input(y_dec_assignment, button_map);
     // Moving Delta up
-    MovementInput up_input = function_input(up_assignment, button_map);
+    MovementInput z_inc_input = function_input(z_inc_assignment, button_map);
     // Moving Delta down
-    MovementInput down_input = function_input(down_assignment, button_map);
+    MovementInput z_dec_input = function_input(z_dec_assignment, button_map);
 
     // Ensure upon start up, the delta starts in the center position
-    command = reset_position();
+    command = zero_command();
     // Control loop
     while (rclcpp::ok())
     {
@@ -209,33 +224,21 @@ int main(int argc, char * argv[])
 
         if(fresh_joy_state)
         {
-            if(pntstmpd_enabled(enable_input))
+            if(control_enabled(enable_input))
             {
                 geometry_msgs::msg::PointStamped temp_command = command;
 
-                temp_command = pntstmpd_reset(reset_input, temp_command);
-                temp_command = pntstmpd_forward(forward_input, temp_command);
-                temp_command = pntstmpd_backward(backward_input, temp_command);
-                temp_command = pntstmpd_left(left_input, temp_command);
-                temp_command = pntstmpd_right(right_input, temp_command);
-                temp_command = pntstmpd_up(up_input, temp_command);
-                temp_command = pntstmpd_down(down_input, temp_command);
+                alt_enabled(alt_input);
 
-                /// @brief Calculate the `home_z_position`
-                /// The `home_z_position` is calculated by taking the average of the minimum and maximum Z axis parameters. This gives us the center position in the Z axis which is considered the "home" position.
-                const float home_z_position = (PARAMETERS_WORK_Z_MIN_M + PARAMETERS_WORK_Z_MAX_M) / 2.0f;
+                temp_command = axes_reset(reset_input, temp_command);
+                temp_command = x_axis_inc(x_inc_input, temp_command);
+                temp_command = x_axis_dec(x_dec_input, temp_command);
+                temp_command = y_axis_inc(y_inc_input, temp_command);
+                temp_command = y_axis_dec(y_dec_input, temp_command);
+                temp_command = z_axis_inc(z_inc_input, temp_command);
+                temp_command = z_axis_dec(z_dec_input, temp_command);
 
-                /// @brief Calculate the `distance_from_home`
-                /// The `distance_from_home_sqrd` is calculated using the Euclidean distance formula without the square rooting it.
-                /// The `temp_command.point.x` and `temp_command.point.y` represent the current position of the delta. We also subtract the `home_z_position` from `temp_command.point.z` to account for the difference in height from the home position.
-                /// This gives us the 3-dimensional distance from the current position to the home position.
-                const float distance_from_home_sqrd = pow(temp_command.point.x, 2) + pow(temp_command.point.y, 2) + pow(temp_command.point.z - home_z_position, 2);
-
-                // If the new coordinates is within the determined boundary, then the new delta command will contain those new coordinates
-                if(distance_from_home_sqrd < pow(boundary_radius, 2))
-                {
-                    command = temp_command;
-                }
+                command = temp_command;
             }
             command.header.stamp = current_time;
 
@@ -286,12 +289,29 @@ static MovementInput function_input(std::string input_assignment, std::map<std::
     }
 }
 
-static bool pntstmpd_enabled(const MovementInput input)
+static bool control_enabled(const MovementInput input)
 {
     return latest_joy_state.buttons.at(input.index);
 }
 
-static geometry_msgs::msg::PointStamped pntstmpd_reset(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static void alt_enabled(MovementInput input)
+{
+    float input_reading = latest_joy_state.buttons.at(input.index);
+    if (input_reading == 0.0)
+    {
+        curr_x_max = x_max;
+        curr_y_max = y_max;
+        curr_z_max = z_max;
+    }
+    else
+    {
+        curr_x_max = alt_x_max;
+        curr_y_max = alt_y_max;
+        curr_z_max = alt_z_max;
+    }
+}
+
+static geometry_msgs::msg::PointStamped axes_reset(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     if (input.type == UNUSED_TYPE)
     {
@@ -299,25 +319,24 @@ static geometry_msgs::msg::PointStamped pntstmpd_reset(const MovementInput input
     }
     if (latest_joy_state.buttons.at(input.index))
     {
-        return reset_position();
+        return zero_command();
     }
 
     return temp_command;
 }
 
-static geometry_msgs::msg::PointStamped reset_position()
+static geometry_msgs::msg::PointStamped zero_command()
 {
     geometry_msgs::msg::PointStamped new_command;
 
     new_command.point.x = 0.0f;
     new_command.point.y = 0.0f;
-    new_command.point.z = 0.355f;
-    new_command.header.stamp = rclcpp::Clock().now();
+    new_command.point.z = 0.0f;
 
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped pntstmpd_forward(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped x_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
 
@@ -326,20 +345,25 @@ static geometry_msgs::msg::PointStamped pntstmpd_forward(const MovementInput inp
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.x = new_command.point.x + base_x_increment * x_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            new_command.point.x = new_command.point.x + base_x_increment * x_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            new_command.point.x = new_command.point.x + base_x_increment * x_scale * latest_joy_state.buttons.at(input.index);
+            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
             break;
+    }
+
+    if (abs(new_command.point.x) > x_max)
+    {
+        new_command = temp_command;
     }
 
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped pntstmpd_backward(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped x_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
     
@@ -348,20 +372,25 @@ static geometry_msgs::msg::PointStamped pntstmpd_backward(const MovementInput in
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.x = new_command.point.x + base_x_increment * x_scale * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            new_command.point.x = new_command.point.x - base_x_increment * x_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.x = new_command.point.x - (curr_x_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            new_command.point.x = new_command.point.x - base_x_increment * x_scale * latest_joy_state.buttons.at(input.index);
+            new_command.point.x = new_command.point.x - (curr_x_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
             break;
+    }
+
+    if (abs(new_command.point.x) > x_max)
+    {
+        new_command = temp_command;
     }
 
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped pntstmpd_left(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped y_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
     
@@ -370,20 +399,25 @@ static geometry_msgs::msg::PointStamped pntstmpd_left(const MovementInput input,
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.y = new_command.point.y - base_y_increment * y_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            new_command.point.y = new_command.point.y - base_y_increment * y_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            new_command.point.y = new_command.point.y - base_y_increment * y_scale * latest_joy_state.buttons.at(input.index);
+            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
             break;
+    }
+
+    if (abs(new_command.point.y) > y_max)
+    {
+        new_command = temp_command;
     }
 
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped pntstmpd_right(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped y_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
     
@@ -392,20 +426,25 @@ static geometry_msgs::msg::PointStamped pntstmpd_right(const MovementInput input
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.y = new_command.point.y - base_y_increment * y_scale * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            new_command.point.y = new_command.point.y + base_y_increment * y_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.y = new_command.point.y + (curr_y_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            new_command.point.y = new_command.point.y + base_y_increment * y_scale * latest_joy_state.buttons.at(input.index);
+            new_command.point.y = new_command.point.y + (curr_y_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
             break;
+    }
+
+    if (abs(new_command.point.y) > y_max)
+    {
+        new_command = temp_command;
     }
 
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped pntstmpd_up(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped z_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
     
@@ -414,20 +453,25 @@ static geometry_msgs::msg::PointStamped pntstmpd_up(const MovementInput input, g
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.z = new_command.point.z + base_z_increment * z_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            new_command.point.z = new_command.point.z + base_z_increment * z_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            new_command.point.z = new_command.point.z + base_z_increment * z_scale * latest_joy_state.buttons.at(input.index);
+            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
             break;
+    }
+
+    if (abs(new_command.point.z) > z_max)
+    {
+        new_command = temp_command;
     }
 
     return new_command;
 }
 
-static geometry_msgs::msg::PointStamped pntstmpd_down(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+static geometry_msgs::msg::PointStamped z_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
     
@@ -436,14 +480,19 @@ static geometry_msgs::msg::PointStamped pntstmpd_down(const MovementInput input,
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.z = new_command.point.z + base_z_increment * z_scale * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
             break;
         case InputType::Trigger:
-            new_command.point.z = new_command.point.z - base_z_increment * z_scale * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.z = new_command.point.z - (curr_z_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             break;
         case InputType::Button:
-            new_command.point.z = new_command.point.z - base_z_increment * z_scale * latest_joy_state.buttons.at(input.index);
+            new_command.point.z = new_command.point.z - (curr_z_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
             break;
+    }
+
+    if (abs(new_command.point.z) > z_max)
+    {
+        new_command = temp_command;
     }
 
     return new_command;
