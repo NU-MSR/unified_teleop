@@ -355,9 +355,9 @@ static geometry_msgs::msg::PointStamped x_axis_inc(const MovementInput input, ge
             break;
     }
 
-    if (abs(new_command.point.x) > x_max)
+    if (abs(new_command.point.x) > curr_x_max)
     {
-        new_command = temp_command;
+        new_command.point.x = curr_x_max;
     }
 
     return new_command;
@@ -382,9 +382,9 @@ static geometry_msgs::msg::PointStamped x_axis_dec(const MovementInput input, ge
             break;
     }
 
-    if (abs(new_command.point.x) > x_max)
+    if (abs(new_command.point.x) > curr_x_max)
     {
-        new_command = temp_command;
+        new_command.point.x = curr_x_max;
     }
 
     return new_command;
@@ -409,9 +409,9 @@ static geometry_msgs::msg::PointStamped y_axis_inc(const MovementInput input, ge
             break;
     }
 
-    if (abs(new_command.point.y) > y_max)
+    if (abs(new_command.point.y) > curr_y_max)
     {
-        new_command = temp_command;
+        new_command.point.y = curr_y_max;
     }
 
     return new_command;
@@ -436,9 +436,9 @@ static geometry_msgs::msg::PointStamped y_axis_dec(const MovementInput input, ge
             break;
     }
 
-    if (abs(new_command.point.y) > y_max)
+    if (abs(new_command.point.y) > curr_y_max)
     {
-        new_command = temp_command;
+        new_command.point.y = curr_y_max;
     }
 
     return new_command;
@@ -463,9 +463,9 @@ static geometry_msgs::msg::PointStamped z_axis_inc(const MovementInput input, ge
             break;
     }
 
-    if (abs(new_command.point.z) > z_max)
+    if (abs(new_command.point.z) > curr_z_max)
     {
-        new_command = temp_command;
+        new_command.point.z = curr_z_max;
     }
 
     return new_command;
@@ -490,9 +490,9 @@ static geometry_msgs::msg::PointStamped z_axis_dec(const MovementInput input, ge
             break;
     }
 
-    if (abs(new_command.point.z) > z_max)
+    if (abs(new_command.point.z) > curr_z_max)
     {
-        new_command = temp_command;
+        new_command.point.z = curr_z_max;
     }
 
     return new_command;
