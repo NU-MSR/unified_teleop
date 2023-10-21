@@ -1,0 +1,8 @@
+name: "spacenav_joystick"
+mapping:
+  axis_translate_y: 0
+  axis_translate_x: 1
+  axis_translate_z: 2
+  axis_rotate_y: 3
+  axis_rotate_x: 4
+  axis_rotate_z: 5

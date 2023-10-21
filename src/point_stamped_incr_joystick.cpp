@@ -41,6 +41,7 @@ using std::string;
 static geometry_msgs::msg::PointStamped command;
 static sensor_msgs::msg::Joy latest_joy_state;
 static bool fresh_joy_state = false;
+static bool always_enable = false;
 
 float curr_x_max = 1.0;
 float curr_y_max = 1.0;
@@ -178,6 +179,8 @@ int main(int argc, char * argv[])
     alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
     alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
     incr_mult = rosnu::declare_and_get_param<float>("incr_mult", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
+    // Whether control input is ALWAYS enabled (USE WITH CAUTION)
+    always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *node, "Whether control input is always enabled");
     // Getting the input device config from launch file parameters
     const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *node, "Chosen input device config file");
     
@@ -291,11 +294,22 @@ static MovementInput function_input(std::string input_assignment, std::map<std::
 
 static bool control_enabled(const MovementInput input)
 {
+    
+    if (always_enable)
+    {
+        return true;
+    }
+    
     return latest_joy_state.buttons.at(input.index);
 }
 
 static void alt_enabled(MovementInput input)
 {
+    if (input.type == InputType::None)
+    {
+        return;
+    }    
+    
     float input_reading = latest_joy_state.buttons.at(input.index);
     if (input_reading == 0.0)
     {
