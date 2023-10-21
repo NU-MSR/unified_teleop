@@ -27,17 +27,17 @@ set(UNIFIED_TELEOP_TARGET_LINK_LIBRARIES
   "${cpp_typesupport_target}"
 )
 
-# point_stamped_joystick
-add_executable(${PROJECT_NAME}_point_stamped_joystick src/point_stamped_joystick.cpp)
-set_target_properties(${PROJECT_NAME}_point_stamped_joystick
+# point_stamped_incr_joystick
+add_executable(${PROJECT_NAME}_point_stamped_incr_joystick src/point_stamped_incr_joystick.cpp)
+set_target_properties(${PROJECT_NAME}_point_stamped_incr_joystick
   PROPERTIES
-  OUTPUT_NAME point_stamped_joystick
+  OUTPUT_NAME point_stamped_incr_joystick
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_point_stamped_joystick
+ament_target_dependencies(${PROJECT_NAME}_point_stamped_incr_joystick
   ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
 )
-target_link_libraries(${PROJECT_NAME}_point_stamped_joystick
+target_link_libraries(${PROJECT_NAME}_point_stamped_incr_joystick
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
@@ -88,7 +88,7 @@ target_link_libraries(${PROJECT_NAME}_twist_merger
 #############
 
 install(TARGETS
-  ${PROJECT_NAME}_point_stamped_joystick
+  ${PROJECT_NAME}_point_stamped_incr_joystick
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
