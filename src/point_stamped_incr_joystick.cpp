@@ -52,6 +52,9 @@ static float z_max;
 static float alt_x_max;
 static float alt_y_max;
 static float alt_z_max;
+static bool x_flip;
+static bool y_flip;
+static bool z_flip;
 
 static const float incr_denom = 1 * std::pow(10, 5); // increment value chosen arbitrarily
 static float incr_mult = 1.0;
@@ -145,6 +148,11 @@ static geometry_msgs::msg::PointStamped z_axis_inc(MovementInput input, geometry
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
 static geometry_msgs::msg::PointStamped z_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
+/// @brief Based on the current/input position, returns coords that move the delta's position down
+/// @param input - The controller input that will indicate whether the delta will move down
+/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+static geometry_msgs::msg::PointStamped flip_movement(geometry_msgs::msg::PointStamped temp_command);
+
 int main(int argc, char * argv[])
 {
     // ROS
@@ -179,6 +187,9 @@ int main(int argc, char * argv[])
     alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
     alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
     incr_mult = rosnu::declare_and_get_param<float>("incr_mult", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
+    x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *node, "Whether the input for this movement should be flipped");
+    y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *node, "Whether the input for this movement should be flipped");
+    z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *node, "Whether the input for this movement should be flipped");
     // Whether control input is ALWAYS enabled (USE WITH CAUTION)
     always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *node, "Whether control input is always enabled");
     // Getting the input device config from launch file parameters
@@ -240,6 +251,7 @@ int main(int argc, char * argv[])
                 temp_command = y_axis_dec(y_dec_input, temp_command);
                 temp_command = z_axis_inc(z_inc_input, temp_command);
                 temp_command = z_axis_dec(z_dec_input, temp_command);
+                temp_command = flip_movement(temp_command);
 
                 command = temp_command;
             }
@@ -512,6 +524,14 @@ static geometry_msgs::msg::PointStamped z_axis_dec(const MovementInput input, ge
     return new_command;
 }
 
+static geometry_msgs::msg::PointStamped flip_movement(geometry_msgs::msg::PointStamped temp_command)
+{
+    temp_command.point.x = temp_command.point.x * pow(-1, x_flip);
+    temp_command.point.y = temp_command.point.y * pow(-1, y_flip);
+    temp_command.point.z = temp_command.point.z * pow(-1, z_flip);
+
+    return temp_command;
+}
 
 static void joy_callback(const sensor_msgs::msg::Joy & joy_state)
 {

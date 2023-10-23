@@ -80,6 +80,12 @@ static float alt_z_max = 0.25;
 static float alt_yaw_max = 0.25;
 static float alt_pitch_max = 0.25;
 static float alt_roll_max = 0.25;
+static bool x_flip;
+static bool y_flip;
+static bool z_flip;
+static bool yaw_flip;
+static bool pitch_flip;
+static bool roll_flip;
 
 /// @brief The type of input a particular device input can be
 enum class InputType
@@ -194,6 +200,11 @@ static geometry_msgs::msg::Twist roll_inc(MovementInput input, geometry_msgs::ms
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
 static geometry_msgs::msg::Twist roll_dec(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
+/// @brief Based on the current/input position, returns coords that move the delta's position down
+/// @param input - The controller input that will indicate whether the delta will move down
+/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+static geometry_msgs::msg::Twist flip_movement(geometry_msgs::msg::Twist temp_command);
+
 int main(int argc, char * argv[])
 {
     // ROS
@@ -238,6 +249,12 @@ int main(int argc, char * argv[])
     alt_yaw_max = rosnu::declare_and_get_param<float>("alt_yaw_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
     alt_pitch_max = rosnu::declare_and_get_param<float>("alt_pitch_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
     alt_roll_max = rosnu::declare_and_get_param<float>("alt_roll_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+    x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *node, "Whether the input for this movement should be flipped");
+    y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *node, "Whether the input for this movement should be flipped");
+    z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *node, "Whether the input for this movement should be flipped");
+    yaw_flip = rosnu::declare_and_get_param<bool>("yaw_flip", false, *node, "Whether the input for this movement should be flipped");
+    pitch_flip = rosnu::declare_and_get_param<bool>("pitch_flip", false, *node, "Whether the input for this movement should be flipped");
+    roll_flip = rosnu::declare_and_get_param<bool>("roll_flip", false, *node, "Whether the input for this movement should be flipped");
     // Whether control input is ALWAYS enabled (USE WITH CAUTION)
     always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *node, "Whether control input is always enabled");
     // Getting the input device config from launch file parameters
@@ -296,13 +313,9 @@ int main(int argc, char * argv[])
         {
             command = zero_command();
 
-            // RCLCPP_INFO(node->get_logger(), "HERE 1");
-
             if(control_enabled(enable_input))
             {
-                // RCLCPP_INFO(node->get_logger(), "HERE 2");
                 alt_enabled(alt_input);
-                // RCLCPP_INFO(node->get_logger(), "HERE 3");
                 command = x_axis_inc(x_inc_input, command);
                 command = x_axis_dec(x_dec_input, command);
                 command = y_axis_inc(y_inc_input, command);
@@ -316,6 +329,8 @@ int main(int argc, char * argv[])
                 command = pitch_dec(pitch_dec_input, command);
                 command = roll_inc(roll_inc_input, command);
                 command = roll_dec(roll_dec_input, command);
+
+                command = flip_movement(command);
             }
 
             cmdvel_pos_pub->publish(command);
@@ -871,6 +886,19 @@ static geometry_msgs::msg::Twist roll_dec(const MovementInput input, geometry_ms
     }
 
     return new_command;
+}
+
+static geometry_msgs::msg::Twist flip_movement(geometry_msgs::msg::Twist temp_command)
+{
+    temp_command.linear.x *= pow(-1, x_flip);
+    temp_command.linear.y *= pow(-1, y_flip);
+    temp_command.linear.z *= pow(-1, z_flip);
+    temp_command.angular.z *= pow(-1, yaw_flip);
+    temp_command.angular.y *= pow(-1, pitch_flip);
+    temp_command.angular.x *= pow(-1, roll_flip);
+
+
+    return temp_command;
 }
 
 static void joy_callback(const sensor_msgs::msg::Joy & joy_state)
