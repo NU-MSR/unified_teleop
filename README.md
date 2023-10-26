@@ -6,7 +6,7 @@ This package offers an intuitive method of creating customize control schemes, a
 For whichever control device you intend to use (video game controller, SpaceNav, etc.), the joy package for that device will be required.
 
 Examples:
-1. For video game controllers (e.g. Dualshock 3, Dualshock 4): https://index.ros.org/p/joy/
+1. For video game controllers (e.g. Playstation Dualshock 4): https://index.ros.org/p/joy/
 2. For the SpaceNav controller: https://index.ros.org/p/spacenav/
 
 ## Key Concepts
