@@ -1,5 +1,5 @@
 /// @file
-/// @brief Publishes a series of PostStamped commands for a robot to receive based on inputs from a control device
+/// @brief Publishes a series of PostStamped commands for a robot to receive based on inputs from a control device, with the values mirroring the usage of the inputs
 /// 
 /// @section Publishers
 ///   desired_position (geometry_msgs/PointStamped) - A PostStamped message for robot teleoperation

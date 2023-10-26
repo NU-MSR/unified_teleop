@@ -1,5 +1,5 @@
 /// @file
-/// @brief Publishes a series of Twist commands for a robot to receive based on inputs from a control device
+/// @brief Publishes a series of Twist commands for a robot to receive based on inputs from a control device, with the values mirroring the usage of the inputs
 /// 
 /// @section Publishers
 ///   cmd_vel (geometry_msgs/Twist) - A Twist message for robot teleoperation
