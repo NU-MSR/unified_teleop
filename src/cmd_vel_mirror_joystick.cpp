@@ -224,7 +224,7 @@ int main(int argc, char * argv[])
     auto joy_sub = node->create_subscription<sensor_msgs::msg::Joy>("joy", 10, joy_callback);
 
     // Publisher
-    auto cmdvel_pos_pub = node->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 100); // puhlishing rate has to be 100, otherwise delta displays incorrect behaviour
+    auto cmdvel_pos_pub = node->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 100); // puhlishing rate has to be 100
     
     //
     // Declaring and getting parameters
