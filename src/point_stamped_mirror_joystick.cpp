@@ -319,6 +319,9 @@ static void alt_enabled(MovementInput input)
 {
     if (input.type == InputType::None)
     {
+        curr_x_max = x_max;
+        curr_y_max = y_max;
+        curr_z_max = z_max;
         return;
     }
     

@@ -390,6 +390,12 @@ static void alt_enabled(MovementInput input)
 {
     if (input.type == InputType::None)
     {
+        curr_x_max = x_max;
+        curr_y_max = y_max;
+        curr_z_max = z_max;
+        curr_yaw_max = yaw_max;
+        curr_pitch_max = pitch_max;
+        curr_roll_max = roll_max;
         return;
     }
     
