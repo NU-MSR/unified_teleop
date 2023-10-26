@@ -148,11 +148,6 @@ static geometry_msgs::msg::PointStamped z_axis_inc(MovementInput input, geometry
 /// @param temp_command - The message that will be overwritten with new position coordinates for the delta
 static geometry_msgs::msg::PointStamped z_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position down
-/// @param input - The controller input that will indicate whether the delta will move down
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
-static geometry_msgs::msg::PointStamped flip_movement(geometry_msgs::msg::PointStamped temp_command);
-
 int main(int argc, char * argv[])
 {
     // ROS
@@ -251,7 +246,6 @@ int main(int argc, char * argv[])
                 temp_command = y_axis_dec(y_dec_input, temp_command);
                 temp_command = z_axis_inc(z_inc_input, temp_command);
                 temp_command = z_axis_dec(z_dec_input, temp_command);
-                temp_command = flip_movement(temp_command);
 
                 command = temp_command;
             }
@@ -371,19 +365,23 @@ static geometry_msgs::msg::PointStamped x_axis_inc(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0)* pow(-1, x_flip);
             break;
         case InputType::Trigger:
-            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0))* pow(-1, x_flip);
             break;
         case InputType::Button:
-            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
+            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index)* pow(-1, x_flip);
             break;
     }
 
-    if (abs(new_command.point.x) > curr_x_max)
+    if (new_command.point.x >= curr_x_max)
     {
         new_command.point.x = curr_x_max;
+    }
+    if (new_command.point.x <= -curr_x_max)
+    {
+        new_command.point.x = -curr_x_max;
     }
 
     return new_command;
@@ -398,19 +396,23 @@ static geometry_msgs::msg::PointStamped x_axis_dec(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0)* pow(-1, x_flip);
             break;
         case InputType::Trigger:
-            new_command.point.x = new_command.point.x - (curr_x_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.x = new_command.point.x - (curr_x_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0))* pow(-1, x_flip);
             break;
         case InputType::Button:
-            new_command.point.x = new_command.point.x - (curr_x_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
+            new_command.point.x = new_command.point.x - (curr_x_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index)* pow(-1, x_flip);
             break;
     }
 
-    if (abs(new_command.point.x) > curr_x_max)
+    if (new_command.point.x >= curr_x_max)
     {
         new_command.point.x = curr_x_max;
+    }
+    if (new_command.point.x <= -curr_x_max)
+    {
+        new_command.point.x = -curr_x_max;
     }
 
     return new_command;
@@ -425,19 +427,23 @@ static geometry_msgs::msg::PointStamped y_axis_inc(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, y_flip);
             break;
         case InputType::Trigger:
-            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, y_flip);
             break;
         case InputType::Button:
-            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
+            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index) * pow(-1, y_flip);
             break;
     }
 
-    if (abs(new_command.point.y) > curr_y_max)
+    if (new_command.point.y >= curr_y_max)
     {
         new_command.point.y = curr_y_max;
+    }
+    if (new_command.point.y <= -curr_y_max)
+    {
+        new_command.point.y = -curr_y_max;
     }
 
     return new_command;
@@ -452,19 +458,23 @@ static geometry_msgs::msg::PointStamped y_axis_dec(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, y_flip);
             break;
         case InputType::Trigger:
-            new_command.point.y = new_command.point.y + (curr_y_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.y = new_command.point.y + (curr_y_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, y_flip);
             break;
         case InputType::Button:
-            new_command.point.y = new_command.point.y + (curr_y_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
+            new_command.point.y = new_command.point.y + (curr_y_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index) * pow(-1, y_flip);
             break;
     }
 
-    if (abs(new_command.point.y) > curr_y_max)
+    if (new_command.point.y >= curr_y_max)
     {
         new_command.point.y = curr_y_max;
+    }
+    if (new_command.point.y <= -curr_y_max)
+    {
+        new_command.point.y = -curr_y_max;
     }
 
     return new_command;
@@ -479,19 +489,23 @@ static geometry_msgs::msg::PointStamped z_axis_inc(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, z_flip);
             break;
         case InputType::Trigger:
-            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, z_flip);
             break;
         case InputType::Button:
-            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
+            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index) * pow(-1, z_flip);
             break;
     }
 
-    if (abs(new_command.point.z) > curr_z_max)
+    if (new_command.point.z >= curr_z_max)
     {
         new_command.point.z = curr_z_max;
+    }
+    if (new_command.point.z <= -curr_z_max)
+    {
+        new_command.point.z = -curr_z_max;
     }
 
     return new_command;
@@ -506,31 +520,27 @@ static geometry_msgs::msg::PointStamped z_axis_dec(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, z_flip);
             break;
         case InputType::Trigger:
-            new_command.point.z = new_command.point.z - (curr_z_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+            new_command.point.z = new_command.point.z - (curr_z_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, z_flip);
             break;
         case InputType::Button:
-            new_command.point.z = new_command.point.z - (curr_z_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index);
+            new_command.point.z = new_command.point.z - (curr_z_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index) * pow(-1, z_flip);
             break;
     }
 
-    if (abs(new_command.point.z) > curr_z_max)
+    if (new_command.point.z >= curr_z_max)
     {
         new_command.point.z = curr_z_max;
     }
+    if (new_command.point.z <= -curr_z_max)
+    {
+        new_command.point.z = -curr_z_max;
+    }
+
 
     return new_command;
-}
-
-static geometry_msgs::msg::PointStamped flip_movement(geometry_msgs::msg::PointStamped temp_command)
-{
-    temp_command.point.x = temp_command.point.x * pow(-1, x_flip);
-    temp_command.point.y = temp_command.point.y * pow(-1, y_flip);
-    temp_command.point.z = temp_command.point.z * pow(-1, z_flip);
-
-    return temp_command;
 }
 
 static void joy_callback(const sensor_msgs::msg::Joy & joy_state)
