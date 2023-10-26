@@ -1,5 +1,3 @@
-/// NEED TO UPDATE DOCUMENTATAION HERE
-
 /// @file
 /// @brief Publishes a series of cmd_vel commands for a robot to receive based on inputs from a control device
 /// 
@@ -12,6 +10,7 @@
 /// @section Parameters
 ///  `~/enable_control (std::string) [default "UNUSED"]`      - Button assigned to enable control inputs
 ///  `~/alt_enable (std::string) [default "UNUSED"]`      - Button assigned to activate alternative max values
+///
 ///  `~/x_axis_inc (std::string) [default "UNUSED"]`      - Button assigned to increase the x-axis value of the robot
 ///  `~/x_axis_dec (std::string) [default "UNUSED"]`      - Button assigned to decrease the x-axis value of the robot
 ///  `~/y_axis_inc (std::string) [default "UNUSED"]`      - Button assigned to increase the y-axis value of the robot
