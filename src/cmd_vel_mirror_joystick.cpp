@@ -1,8 +1,8 @@
 /// @file
-/// @brief Publishes a series of cmd_vel commands for a robot to receive based on inputs from a control device
+/// @brief Publishes a series of Twist commands for a robot to receive based on inputs from a control device
 /// 
 /// @section Publishers
-///   cmd_vel (geometry_msgs/Twist) - A commanded twist message for the robot
+///   cmd_vel (geometry_msgs/Twist) - A Twist message for robot teleoperation
 ///
 /// @section Subscribers
 ///   joy (sensor_msgs/Joy) - A message containing current state of the control device's inputs
@@ -149,69 +149,68 @@ static void alt_enabled(MovementInput input);
 /// @brief Returns a Twist command that has zero for all of its fields
 static geometry_msgs::msg::Twist zero_command();
 
-/// @brief Based on the current/input position, returns coords that move the delta's position forward
-/// @param input - The controller input that will indicate whether the delta will move forward
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an increase in x
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist x_axis_inc(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position backward
-/// @param input - The controller input that will indicate whether the delta will move backward
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an decrease in x
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist x_axis_dec(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position left
-/// @param input - The controller input that will indicate whether the delta will move left
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an increase in y
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist y_axis_inc(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position right
-/// @param input - The controller input that will indicate whether the delta will move right
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an decrease in y
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist y_axis_dec(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position up
-/// @param input - The controller input that will indicate whether the delta will move up
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an increase in z
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist z_axis_inc(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position down
-/// @param input - The controller input that will indicate whether the delta will move down
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an decrease in z
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist z_axis_dec(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position forward
-/// @param input - The controller input that will indicate whether the delta will move forward
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an increase in yaw
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist yaw_inc(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position backward
-/// @param input - The controller input that will indicate whether the delta will move backward
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an decrease in yaw
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist yaw_dec(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position left
-/// @param input - The controller input that will indicate whether the delta will move left
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an increase in pitch
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist pitch_inc(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position right
-/// @param input - The controller input that will indicate whether the delta will move right
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an decrease in pitch
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist pitch_dec(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position up
-/// @param input - The controller input that will indicate whether the delta will move up
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an increase in roll
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist roll_inc(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position down
-/// @param input - The controller input that will indicate whether the delta will move down
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Based on the current/input velocity, returns velocities with an decrease in roll
+/// @param input - The controller input that will indicate whether the velocity changes
+/// @param temp_command - The message that will be overwritten with new velocity coordinates for the robot
 static geometry_msgs::msg::Twist roll_dec(MovementInput input, geometry_msgs::msg::Twist temp_command);
 
-/// @brief Based on the current/input position, returns coords that move the delta's position down
-/// @param input - The controller input that will indicate whether the delta will move down
-/// @param temp_command - The message that will be overwritten with new position coordinates for the delta
+/// @brief Returns flipped velocities depenending on parameters
+/// @param temp_command - The message that will be overwritten with new velocities for the robot
 static geometry_msgs::msg::Twist flip_movement(geometry_msgs::msg::Twist temp_command);
 
 int main(int argc, char * argv[])
