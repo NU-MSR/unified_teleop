@@ -5,6 +5,10 @@ This package offers an intuitive method of creating customize control schemes, a
 ## Requirements
 For whichever control device you intend to use (video game controller, SpaceNav, etc.), the joy package for that device will be required.
 
+Examples:
+1. For video game controllers (e.g. Dualshock 3, Dualshock 4): https://index.ros.org/p/joy/
+2. For the SpaceNav controller: https://index.ros.org/p/spacenav/
+
 ## Key Concepts
 For this package to be used, it requires three components:
 1. `Input Mapping`  - Contains the names of each of the control device's inputs and their respective index numbers in a /joy message (found in the /config folder, refer to example_mapping.yaml for detailed example).
