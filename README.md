@@ -22,3 +22,5 @@ Mappings for the Dualshock 3 and 4 controllers, and SpaceNav joystick have been 
 To control the `turtlesim` with the `cmd_vel_mirror_joystick`, the demo `demo_dualshock4_turtlesim.launch` has been included to demonstrate an example on how to utilize the Unified Teleop package for controlling a robot, including the usage of Control Schemes and Input Mappings.
 
 Run `ros2 launch unified_teleop demo_dualshock4_turtlesim.launch.xml` and refer to `example_scheme.yaml` on how to control the `turtlesim`.
+
+Feel free to experiment with different control schemes, and try using different control devices by creating new input mappings!
