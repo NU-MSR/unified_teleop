@@ -1,7 +1,7 @@
 # Unified Teleop (NUMSR)
 ROS interface for joy messages from various types of control devices to do robot teleoperation with different control schemes.
 
-## Prequisites
+## Requirements
 For whichever control device you intend to use (video game controller, SpaceNav, etc.), the joy package for that device will be required.
 
 ## Key Concepts
@@ -16,7 +16,8 @@ For this package to be used, it requires three components:
 3. `point_stamped_mirror_joystick`  - When provided a control scheme and input mapping, publishes PointStamped messages where the values mirror the user's inputs (e.g. the positional values will mirror how you push the joystick).
 4. `twist_merger`                   - Takes in Twist messages from two different topics, merging the linear variable values from one with the angular variable values from the other to output a combined Twist message (for those looking to merge multiple control schemes or nodes).
 
-## Common Demos
+## Common Demo
+
 To make a single robot "walk the dog" use `ros2 launch omnid_control single_robot_float.launch robot_id:=X` where `X` is the numerical ID of the robot.
 By default, this launch file will enable the gimbal window so the robot doesn't move unless the gimbal is within some tolerance of upright. To disable this behavior, use the option `enable_gimbal_window:=false` with caution.
 
