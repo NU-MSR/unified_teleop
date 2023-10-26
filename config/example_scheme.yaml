@@ -1,0 +1,28 @@
+# An annotated version example control scheme
+# This assumes the use of a dualshock 4 controller, with the joy and cmd_vel_mirror_joystick nodes
+
+# Wildcard to account for use of namespaces
+/**:
+  # joy node that sends the /joy messages reflecting the inputs pressed on the dualshock 4
+  # to the cmd_vel_mirror_joystick node
+  joy_node:
+    ros__parameters:
+      device_id: 0
+      deadzone: 0.1
+      autorepeat_rate: 20.0
+
+  # Node that listens to the /joy topic and outputs Twist messages for teleoperation
+  cmd_vel_mirror_joystick_node:
+    # More details on each of these parameters can be found in the cmd_vel_mirror_joystick file,
+    # and ensure that the string name of the assigned input matches that of it in the input mapping
+    ros__parameters:
+      x_axis_inc: "axis_left_stick_y" # Map the desired control scheme function to the desired input from the controller device
+      x_axis_dec: "axis_left_stick_y"
+      y_axis_inc: "axis_directional_buttons_x"  # Certain input types (e.g. joysticks, triggers, directional buttons) are mapped twice to complimentary control functions
+                                                # that affect the robot's 6 Degrees of Freedom, such as z_axis_inc & z_axis_dec.
+      y_axis_dec: "axis_directional_buttons_x"  # If the input is assigned to only one of two complimentary control functions, the input related to the unmapped control function
+                                                # will not do anything (e.g. if the y-axis of the left joystick is mapped to the decrease of the x-axis, pushing the left joystick
+                                                # up will not affect anything).
+      yaw_inc: "axis_left_stick_x"
+      yaw_dec: "axis_left_stick_x"
+      enable_control: "button_r1"
