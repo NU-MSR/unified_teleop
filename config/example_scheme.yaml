@@ -18,11 +18,16 @@
     ros__parameters:
       x_axis_inc: "axis_left_stick_y" # Map the desired control scheme function to the desired input from the controller device
       x_axis_dec: "axis_left_stick_y"
-      y_axis_inc: "axis_directional_buttons_x"  # Certain input types (e.g. joysticks, triggers, directional buttons) are mapped twice to complimentary control functions
+      y_axis_inc: "axis_left_stick_x"  # Certain input types (e.g. joysticks, triggers, directional buttons) are mapped twice to complimentary control functions
                                                 # that affect the robot's 6 Degrees of Freedom, such as z_axis_inc & z_axis_dec.
-      y_axis_dec: "axis_directional_buttons_x"  # If the input is assigned to only one of two complimentary control functions, the input related to the unmapped control function
+      y_axis_dec: "axis_left_stick_x"  # If the input is assigned to only one of two complimentary control functions, the input related to the unmapped control function
                                                 # will not do anything (e.g. if the y-axis of the left joystick is mapped to the decrease of the x-axis, pushing the left joystick
                                                 # up will not affect anything).
-      yaw_inc: "axis_left_stick_x"
-      yaw_dec: "axis_left_stick_x"
+      yaw_inc: "axis_right_stick_x"
+      yaw_dec: "axis_right_stick_x"
+
       enable_control: "button_r1"
+
+      x_max: 7.0
+      y_max: 7.0
+      yaw_max: 4.5
