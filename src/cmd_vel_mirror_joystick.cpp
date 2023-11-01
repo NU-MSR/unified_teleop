@@ -63,10 +63,11 @@
 
 using std::string;
 
-static geometry_msgs::msg::Twist command;
+static geometry_msgs::msg::Twist command, p_cmd, old_p_cmd;
 static sensor_msgs::msg::Joy latest_joy_state;
 static bool fresh_joy_state = false;
 static bool always_enable = false;
+const float rate_of_change = 1.5 * std::pow(10, -5); // USER CAN ADJUST, KEEP IT EXTREMELY SMALL
 
 float curr_x_max = 1.0;
 float curr_y_max = 1.0;
@@ -213,6 +214,12 @@ static geometry_msgs::msg::Twist roll_dec(MovementInput input, geometry_msgs::ms
 /// @param temp_command - The message that will be overwritten with new velocities for the robot
 static geometry_msgs::msg::Twist flip_movement(geometry_msgs::msg::Twist temp_command);
 
+static geometry_msgs::msg::Twist subtract_twist(geometry_msgs::msg::Twist subtracted, geometry_msgs::msg::Twist subtractor);
+
+static geometry_msgs::msg::Twist normalize_twist(geometry_msgs::msg::Twist input_command, float new_mag_linear, float new_mag_angular);
+
+static geometry_msgs::msg::Twist add_twist(geometry_msgs::msg::Twist add1, geometry_msgs::msg::Twist add2);
+
 int main(int argc, char * argv[])
 {
     // ROS
@@ -298,6 +305,10 @@ int main(int argc, char * argv[])
     MovementInput roll_inc_input = function_input(roll_inc_assignment, button_map);
     MovementInput roll_dec_input = function_input(roll_dec_assignment, button_map);
 
+    command = zero_command();
+    p_cmd = command;
+    old_p_cmd = p_cmd;
+    
     // Control loop
     while (rclcpp::ok())
     {
@@ -309,6 +320,7 @@ int main(int argc, char * argv[])
 
             if(control_enabled(enable_input))
             {
+                // Reading the raw Twist commands
                 alt_enabled(alt_input);
                 command = x_axis_inc(x_inc_input, command);
                 command = x_axis_dec(x_dec_input, command);
@@ -325,9 +337,20 @@ int main(int argc, char * argv[])
                 command = roll_dec(roll_dec_input, command);
 
                 command = flip_movement(command);
+
+                // Processing the Twist commands with modifiers
+
+                // Get the diff between curr and new
+                geometry_msgs::msg::Twist diff_twist = subtract_twist(command, p_cmd);
+                // Adjust the diff so that it's within the set rate_of_change
+                geometry_msgs::msg::Twist adjusted_diff = normalize_twist(diff_twist, rate_of_change, rate_of_change/2);
+                // Increment it on the new processed command
+                p_cmd = add_twist(p_cmd, adjusted_diff);
             }
 
-            cmdvel_pos_pub->publish(command);
+            old_p_cmd = p_cmd;
+
+            cmdvel_pos_pub->publish(p_cmd);
         }
         rclcpp::spin_some(node);
     }
@@ -905,4 +928,53 @@ static void joy_callback(const sensor_msgs::msg::Joy & joy_state)
 {
     latest_joy_state = joy_state;
     fresh_joy_state = true;
+}
+
+static geometry_msgs::msg::Twist subtract_twist(geometry_msgs::msg::Twist subtracted, geometry_msgs::msg::Twist subtractor)
+{
+    geometry_msgs::msg::Twist new_command;
+    new_command.linear.x = subtracted.linear.x - subtractor.linear.x;
+    new_command.linear.y = subtracted.linear.y - subtractor.linear.y;
+    new_command.linear.z = subtracted.linear.z - subtractor.linear.z;
+    new_command.angular.x = subtracted.angular.x - subtractor.angular.x;
+    new_command.angular.y = subtracted.angular.y - subtractor.angular.y;
+    new_command.angular.z = subtracted.angular.z - subtractor.angular.z;
+    return new_command;
+}
+
+static geometry_msgs::msg::Twist normalize_twist(geometry_msgs::msg::Twist input_command, float new_mag_linear, float new_mag_angular)
+{
+    geometry_msgs::msg::Twist norm_command = input_command;
+    float mag_linear = sqrt(input_command.linear.x * input_command.linear.x + input_command.linear.y * input_command.linear.y + input_command.linear.z * input_command.linear.z);
+    float mag_angular = sqrt(input_command.angular.x * input_command.angular.x + input_command.angular.y * input_command.angular.y + input_command.angular.z * input_command.angular.z);
+    
+    // If mag_linear != 0 adjust pos accordingly, otherwise return original vector
+    if (mag_linear != 0)
+    {
+        norm_command.linear.x = new_mag_linear * norm_command.linear.x / mag_linear;
+        norm_command.linear.y = new_mag_linear * norm_command.linear.y / mag_linear;
+        norm_command.linear.z = new_mag_linear * norm_command.linear.z / mag_linear;
+    }
+    
+    if (mag_angular != 0)
+    {
+        norm_command.angular.x = new_mag_angular * norm_command.angular.x / mag_angular;
+        norm_command.angular.y = new_mag_angular * norm_command.angular.y / mag_angular;
+        norm_command.angular.z = new_mag_angular * norm_command.angular.z / mag_angular;
+    }
+
+    return norm_command;
+}
+
+static geometry_msgs::msg::Twist add_twist(geometry_msgs::msg::Twist add1, geometry_msgs::msg::Twist add2)
+{
+    geometry_msgs::msg::Twist new_command;
+    new_command.linear.x = add1.linear.x + add2.linear.x;
+    new_command.linear.y = add1.linear.y + add2.linear.y;
+    new_command.linear.z = add1.linear.z + add2.linear.z;
+    new_command.angular.x = add1.angular.x + add2.angular.x;
+    new_command.angular.y = add1.angular.y + add2.angular.y;
+    new_command.angular.z = add1.angular.z + add2.angular.z;
+
+    return new_command;
 }
