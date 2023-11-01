@@ -44,6 +44,9 @@
 ///  `~/pitch_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///  `~/roll_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///
+///  `~/lin_rate_chg_fac (float) [default 0.0]`      - Factor to the rate of change for the output's linear values
+///  `~/ang_rate_chg_fac (float) [default 0.0]`      - Factor to the rate of change for the output's angular values
+///
 ///  `~/always_enable (bool) [default false]`      - Whether control input is always enabled (USE WITH CAUTION)
 ///
 ///  `~/input_device_config_file (std::string) [default "dualshock4_mapping"]`      - Chosen input device config file
@@ -216,10 +219,20 @@ static geometry_msgs::msg::Twist roll_dec(MovementInput input, geometry_msgs::ms
 /// @param temp_command - The message that will be overwritten with new velocities for the robot
 static geometry_msgs::msg::Twist flip_movement(geometry_msgs::msg::Twist temp_command);
 
+/// @brief Returns a Twist message that reflects the difference between two given Twist messages
+/// @param subtracted - The Twist message that will be subtracted
+/// @param subtractor - The Twist message that will be subtracting from the subtracted
 static geometry_msgs::msg::Twist subtract_twist(geometry_msgs::msg::Twist subtracted, geometry_msgs::msg::Twist subtractor);
 
+/// @brief Returns a Twist message that normalizes the linear and angular components independently of each other to a given magnitude each
+/// @param input_command - The Twist message that will be normalized
+/// @param new_mag_linear - The desired magnitude for the linear component of resulting Twist message
+/// @param new_mag_angular - The desired magnitude for the angular component of resulting Twist message
 static geometry_msgs::msg::Twist normalize_twist(geometry_msgs::msg::Twist input_command, float new_mag_linear, float new_mag_angular);
 
+/// @brief Returns a Twist message that reflects the sum between two given Twist messages
+/// @param subtracted - First part of Twist addition
+/// @param subtractor - Second part of the Twist addition
 static geometry_msgs::msg::Twist add_twist(geometry_msgs::msg::Twist add1, geometry_msgs::msg::Twist add2);
 
 int main(int argc, char * argv[])
@@ -326,6 +339,7 @@ int main(int argc, char * argv[])
             if(control_enabled(enable_input))
             {
                 // Reading the raw Twist commands
+                
                 alt_enabled(alt_input);
                 command = x_axis_inc(x_inc_input, command);
                 command = x_axis_dec(x_dec_input, command);
