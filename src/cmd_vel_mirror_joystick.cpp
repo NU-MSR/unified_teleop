@@ -88,6 +88,8 @@ static float alt_z_max = 0.25;
 static float alt_yaw_max = 0.25;
 static float alt_pitch_max = 0.25;
 static float alt_roll_max = 0.25;
+static float lin_rate_chg_fac;
+static float ang_rate_chg_fac;
 static bool x_flip;
 static bool y_flip;
 static bool z_flip;
@@ -270,6 +272,9 @@ int main(int argc, char * argv[])
     yaw_flip = rosnu::declare_and_get_param<bool>("yaw_flip", false, *node, "Whether the input for this movement should be flipped");
     pitch_flip = rosnu::declare_and_get_param<bool>("pitch_flip", false, *node, "Whether the input for this movement should be flipped");
     roll_flip = rosnu::declare_and_get_param<bool>("roll_flip", false, *node, "Whether the input for this movement should be flipped");
+    // Modifier parameters
+    lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's linear values");
+    ang_rate_chg_fac = rosnu::declare_and_get_param<float>("ang_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's angular values");
     // Whether control input is ALWAYS enabled
     always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *node, "Whether control input is always enabled (USE WITH CAUTION)");
     // Getting the input device config from launch file parameters
@@ -340,10 +345,11 @@ int main(int argc, char * argv[])
 
                 // Processing the Twist commands with modifiers
 
+                // Implementing rate of change modifier
                 // Get the diff between curr and new
                 geometry_msgs::msg::Twist diff_twist = subtract_twist(command, p_cmd);
                 // Adjust the diff so that it's within the set rate_of_change
-                geometry_msgs::msg::Twist adjusted_diff = normalize_twist(diff_twist, rate_of_change, rate_of_change/2);
+                geometry_msgs::msg::Twist adjusted_diff = normalize_twist(diff_twist, rate_of_change * lin_rate_chg_fac, rate_of_change * ang_rate_chg_fac);
                 // Increment it on the new processed command
                 p_cmd = add_twist(p_cmd, adjusted_diff);
             }
@@ -948,6 +954,15 @@ static geometry_msgs::msg::Twist normalize_twist(geometry_msgs::msg::Twist input
     float mag_linear = sqrt(input_command.linear.x * input_command.linear.x + input_command.linear.y * input_command.linear.y + input_command.linear.z * input_command.linear.z);
     float mag_angular = sqrt(input_command.angular.x * input_command.angular.x + input_command.angular.y * input_command.angular.y + input_command.angular.z * input_command.angular.z);
     
+    if (new_mag_linear == 0)
+    {
+        new_mag_linear = mag_linear;
+    }
+    if (new_mag_angular == 0)
+    {
+        new_mag_angular = mag_angular;
+    }
+
     // If mag_linear != 0 adjust pos accordingly, otherwise return original vector
     if (mag_linear != 0)
     {
