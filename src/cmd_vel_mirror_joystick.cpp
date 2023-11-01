@@ -46,6 +46,12 @@
 ///
 ///  `~/lin_rate_chg_fac (float) [default 0.0]`      - Factor to the rate of change for the output's linear values
 ///  `~/ang_rate_chg_fac (float) [default 0.0]`      - Factor to the rate of change for the output's angular values
+///  `~/x_offset (float) [default 0.0]`      - The offset for the message's zero value
+///  `~/y_offset (float) [default 0.0]`      - The offset for the message's zero value
+///  `~/z_offset (float) [default 0.0]`      - The offset for the message's zero value
+///  `~/yaw_offset (float) [default 0.0]`      - The offset for the message's zero value
+///  `~/pitch_offset (float) [default 0.0]`      - The offset for the message's zero value
+///  `~/roll_offset (float) [default 0.0]`      - The offset for the message's zero value
 ///
 ///  `~/always_enable (bool) [default false]`      - Whether control input is always enabled (USE WITH CAUTION)
 ///
@@ -93,6 +99,12 @@ static float alt_pitch_max = 0.25;
 static float alt_roll_max = 0.25;
 static float lin_rate_chg_fac;
 static float ang_rate_chg_fac;
+static float x_offset;
+static float y_offset;
+static float z_offset;
+static float yaw_offset;
+static float pitch_offset;
+static float roll_offset;
 static bool x_flip;
 static bool y_flip;
 static bool z_flip;
@@ -154,6 +166,9 @@ static void alt_enabled(MovementInput input);
 
 /// @brief Returns a Twist command that has zero for all of its fields
 static geometry_msgs::msg::Twist zero_command();
+
+/// @brief Returns a Twist command that has the offset for all of its fields
+static geometry_msgs::msg::Twist offset_command();
 
 /// @brief Based on the current/input velocity, returns velocities with an increase in x
 /// @param input - The controller input that will indicate whether the velocity changes
@@ -235,6 +250,10 @@ static geometry_msgs::msg::Twist normalize_twist(geometry_msgs::msg::Twist input
 /// @param subtractor - Second part of the Twist addition
 static geometry_msgs::msg::Twist add_twist(geometry_msgs::msg::Twist add1, geometry_msgs::msg::Twist add2);
 
+/// @brief Returns a Twist message that with rounded values to a certain decimal point
+/// @param input_command - The Twist message that will be rounded
+static geometry_msgs::msg::Twist round_twist(geometry_msgs::msg::Twist input_command);
+
 int main(int argc, char * argv[])
 {
     // ROS
@@ -288,6 +307,12 @@ int main(int argc, char * argv[])
     // Modifier parameters
     lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's linear values");
     ang_rate_chg_fac = rosnu::declare_and_get_param<float>("ang_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's angular values");
+    x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *node, "The offset for the message's zero value");
+    y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *node, "The offset for the message's zero value");
+    z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *node, "The offset for the message's zero value");
+    yaw_offset = rosnu::declare_and_get_param<float>("yaw_offset", 0.0f, *node, "The offset for the message's zero value");
+    pitch_offset = rosnu::declare_and_get_param<float>("pitch_offset", 0.0f, *node, "The offset for the message's zero value");
+    roll_offset = rosnu::declare_and_get_param<float>("roll_offset", 0.0f, *node, "The offset for the message's zero value");
     // Whether control input is ALWAYS enabled
     always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *node, "Whether control input is always enabled (USE WITH CAUTION)");
     // Getting the input device config from launch file parameters
@@ -339,7 +364,7 @@ int main(int argc, char * argv[])
             if(control_enabled(enable_input))
             {
                 // Reading the raw Twist commands
-                
+
                 alt_enabled(alt_input);
                 command = x_axis_inc(x_inc_input, command);
                 command = x_axis_dec(x_dec_input, command);
@@ -357,8 +382,6 @@ int main(int argc, char * argv[])
 
                 command = flip_movement(command);
 
-                // Processing the Twist commands with modifiers
-
                 // Implementing rate of change modifier
                 // Get the diff between curr and new
                 geometry_msgs::msg::Twist diff_twist = subtract_twist(command, p_cmd);
@@ -367,10 +390,19 @@ int main(int argc, char * argv[])
                 // Increment it on the new processed command
                 p_cmd = add_twist(p_cmd, adjusted_diff);
             }
+            else
+            {
+                p_cmd = command;
+            }
 
             old_p_cmd = p_cmd;
 
-            cmdvel_pos_pub->publish(p_cmd);
+            // Adjust command so that it is offset as desired
+            geometry_msgs::msg::Twist offset_cmd = add_twist(p_cmd, offset_command());
+            // Round the values of the message so that it does not sporadically change
+            offset_cmd = round_twist(offset_cmd);
+
+            cmdvel_pos_pub->publish(offset_cmd);
         }
         rclcpp::spin_some(node);
     }
@@ -465,12 +497,26 @@ static geometry_msgs::msg::Twist zero_command()
 {
     geometry_msgs::msg::Twist new_command;
 
-    new_command.linear.x = 0.0f;
-    new_command.linear.y = 0.0f;
-    new_command.linear.z = 0.0f;
-    new_command.angular.x = 0.0f;
-    new_command.angular.y = 0.0f;
-    new_command.angular.z = 0.0f;
+    new_command.linear.x = 0.0;
+    new_command.linear.y = 0.0;
+    new_command.linear.z = 0.0;
+    new_command.angular.x = 0.0;
+    new_command.angular.y = 0.0;
+    new_command.angular.z = 0.0;
+
+    return new_command;
+}
+
+static geometry_msgs::msg::Twist offset_command()
+{
+    geometry_msgs::msg::Twist new_command;
+
+    new_command.linear.x = x_offset;
+    new_command.linear.y = y_offset;
+    new_command.linear.z = z_offset;
+    new_command.angular.x = yaw_offset;
+    new_command.angular.y = pitch_offset;
+    new_command.angular.z = roll_offset;
 
     return new_command;
 }
@@ -1005,5 +1051,18 @@ static geometry_msgs::msg::Twist add_twist(geometry_msgs::msg::Twist add1, geome
     new_command.angular.y = add1.angular.y + add2.angular.y;
     new_command.angular.z = add1.angular.z + add2.angular.z;
 
+    return new_command;
+}
+
+static geometry_msgs::msg::Twist round_twist(geometry_msgs::msg::Twist input_command)
+{
+    geometry_msgs::msg::Twist new_command;
+    int precision = 4;
+    new_command.linear.x = round(input_command.linear.x * std::pow(10, precision))/std::pow(10, precision);
+    new_command.linear.y = round(input_command.linear.y * std::pow(10, precision))/std::pow(10, precision);
+    new_command.linear.z = round(input_command.linear.z * std::pow(10, precision))/std::pow(10, precision);
+    new_command.angular.x = round(input_command.angular.x * std::pow(10, precision))/std::pow(10, precision);
+    new_command.angular.y = round(input_command.angular.y * std::pow(10, precision))/std::pow(10, precision);
+    new_command.angular.z = round(input_command.angular.z * std::pow(10, precision))/std::pow(10, precision);
     return new_command;
 }
