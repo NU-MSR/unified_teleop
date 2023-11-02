@@ -15,55 +15,55 @@ find_package(yaml-cpp REQUIRED)
 ## Build ##
 ###########
 
-ament_export_dependencies(rclcpp sensor_msgs)
+ament_export_dependencies(rclcpp geometry_msgs sensor_msgs)
 
 set(UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES
   rclcpp geometry_msgs sensor_msgs
 )
 set(UNIFIED_TELEOP_TARGET_LINK_LIBRARIES
-  cmakeme_flags omnid_core::omnid_core yaml-cpp
+  cmakeme_flags yaml-cpp
   "${cpp_typesupport_target}"
 )
 
-# point_stamped_incr_joystick
-add_executable(${PROJECT_NAME}_point_stamped_incr_joystick src/point_stamped_incr_joystick.cpp)
-set_target_properties(${PROJECT_NAME}_point_stamped_incr_joystick
+# point_stamped_incr
+add_executable(${PROJECT_NAME}_point_stamped_incr src/point_stamped_incr.cpp)
+set_target_properties(${PROJECT_NAME}_point_stamped_incr
   PROPERTIES
-  OUTPUT_NAME point_stamped_incr_joystick
+  OUTPUT_NAME point_stamped_incr
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_point_stamped_incr_joystick
+ament_target_dependencies(${PROJECT_NAME}_point_stamped_incr
   ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
 )
-target_link_libraries(${PROJECT_NAME}_point_stamped_incr_joystick
+target_link_libraries(${PROJECT_NAME}_point_stamped_incr
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
-# point_stamped_mirror_joystick
-add_executable(${PROJECT_NAME}_point_stamped_mirror_joystick src/point_stamped_mirror_joystick.cpp)
-set_target_properties(${PROJECT_NAME}_point_stamped_mirror_joystick
+# point_stamped_mirror
+add_executable(${PROJECT_NAME}_point_stamped_mirror src/point_stamped_mirror.cpp)
+set_target_properties(${PROJECT_NAME}_point_stamped_mirror
   PROPERTIES
-  OUTPUT_NAME point_stamped_mirror_joystick
+  OUTPUT_NAME point_stamped_mirror
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_point_stamped_mirror_joystick
+ament_target_dependencies(${PROJECT_NAME}_point_stamped_mirror
   ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
 )
-target_link_libraries(${PROJECT_NAME}_point_stamped_mirror_joystick
+target_link_libraries(${PROJECT_NAME}_point_stamped_mirror
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
-# cmd_vel_mirror_joystick
-add_executable(${PROJECT_NAME}_cmd_vel_mirror_joystick src/cmd_vel_mirror_joystick.cpp)
-set_target_properties(${PROJECT_NAME}_cmd_vel_mirror_joystick
+# twist_mirror
+add_executable(${PROJECT_NAME}_twist_mirror src/twist_mirror.cpp)
+set_target_properties(${PROJECT_NAME}_twist_mirror
   PROPERTIES
-  OUTPUT_NAME cmd_vel_mirror_joystick
+  OUTPUT_NAME twist_mirror
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_cmd_vel_mirror_joystick
+ament_target_dependencies(${PROJECT_NAME}_twist_mirror
   ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
 )
-target_link_libraries(${PROJECT_NAME}_cmd_vel_mirror_joystick
+target_link_libraries(${PROJECT_NAME}_twist_mirror
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
@@ -86,17 +86,17 @@ target_link_libraries(${PROJECT_NAME}_twist_merger
 #############
 
 install(TARGETS
-  ${PROJECT_NAME}_point_stamped_incr_joystick
+  ${PROJECT_NAME}_point_stamped_incr
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
 install(TARGETS
-  ${PROJECT_NAME}_point_stamped_mirror_joystick
+  ${PROJECT_NAME}_point_stamped_mirror
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
 install(TARGETS
-  ${PROJECT_NAME}_cmd_vel_mirror_joystick
+  ${PROJECT_NAME}_twist_mirror
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -115,7 +115,6 @@ install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 #############
 
 if(BUILD_TESTING)
-  find_package(catch_ros2 REQUIRED)
 
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
