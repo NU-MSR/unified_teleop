@@ -9,18 +9,16 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(rosnu REQUIRED)
-find_package(omnid_core REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 ###########
 ## Build ##
 ###########
 
-ament_export_dependencies(rclcpp sensor_msgs nav_msgs rosnu)
+ament_export_dependencies(rclcpp sensor_msgs)
 
 set(UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES
-  rclcpp geometry_msgs sensor_msgs rosnu
+  rclcpp geometry_msgs sensor_msgs
 )
 set(UNIFIED_TELEOP_TARGET_LINK_LIBRARIES
   cmakeme_flags omnid_core::omnid_core yaml-cpp
