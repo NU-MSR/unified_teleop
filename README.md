@@ -1,51 +1,63 @@
 # Unified Teleop (NUMSR)
-ROS interface for joy messages from various types of control devices to do robot teleoperation with different control schemes.
-This package offers an intuitive method of creating customize control schemes, and allows for the use of a variety of input devices by creating your own input mappings.
+Unified Teleop is a versatile ROS package designed for seamless robot teleoperation through various control devices. It enables users to craft tailored control schemes and interface with any device supported by a ROS joy package. This package is user-friendly, encouraging community contributions for extended device support.
 
-## How is this different from the standard teleop_twist_joy
+## Features of Unified_teleop vs Teleop_twist_joy Packages
+1. **Configurable Input Schemes for any device:** As long as the input control device of choice has a ROS joy package, users can create configurable Input Schemes to interface with said device (e.g. Xbox360 Controller, Dualshock4 Controller, SpaceNav Mouse).
+Users are encouraged to make pull requests for their Input Schemes of new input control devices.
+2. **Custom Output Schemes:** Users can create custom Output Schemes to control their robot in their preferred manner (e.g. moving the robot forwards using the left joystick, right joystick, or up button).
+3. **Supports intuitive naming schemes:** As opposed to using confusing index numbers, users can utilize clear and meaningful naming schemes for describing control device inputs to simplify the Output Scheme creation process (e.g. enable_control: button_r1).
+4. **Provides both Twist and PointStamped messages:** This package includes Teleop Nodes that can publish Twist or PointStamped messages to provide users with additional options for controlling their robots. More options will be added if there is high demmand for specific message types.
+5. **Allows for different modes of control:** For PointStamped, there is the choice between Incremental and Mirror control modes to provided users additional options in how they control their robots.
+    1. Mirror: The Teleop Node's ouput will mirror its inputs (e.g. the robot arm will more as far as the joystick is moved).
+    2. Incremental: The Teleop Node's output will increments as its inputs are toggled (e.g. the robot arm will continue to move whilst the joystick is pushed).
+6. **Apply modifiers to the teleop outputs:** Additional modifiers for the Teleop Node outputs have been applied to allow for additional customization in how a user would like to control their robot.
+    1. Rate of Change: To smoothen a robot's movement and minimize erratic movements, users can implement a Rate of Change movement limit.
+    2. Spherical Boundary Radius: For users who want their robot to move within a Spherical Boundary instead of the standard cuboid one.
+    3. Offsets: To Offset the robot's zero position to suit the user's needs.
 
-## Requirements
-For whichever control device you intend to use (video game controller, SpaceNav, etc.), the joy package for that device will be required.
+## Package Requirements
+To utilize Unified Teleop with your chosen input device, such as a video game controller or SpaceNav, you must install the corresponding ROS joy package. Ensure these packages are active before operating your device. Here are some common examples:
 
-Examples:
-1. For video game controllers (e.g. Playstation Dualshock 4): https://index.ros.org/p/joy/
-2. For the SpaceNav controller: https://index.ros.org/p/spacenav/
+1. **Game Controllers (e.g., Playstation Dualshock 4):** https://index.ros.org/p/joy/
+2. **SpaceNav Controller:** https://index.ros.org/p/spacenav/
 
-## Key Concepts
-For this package to be used, it requires three components:
-1. `Input Mapping`  - Contains the names of each of the control device's inputs and their respective index numbers in a /joy message (found in the /config folder, refer to example_mapping.yaml for detailed example).
-Mappings for the Dualshock 3 and 4 controllers, and SpaceNav joystick have been included with this package, and you can create your own.
-2. `Control Scheme` - Contains the names of the parameters of a joystick node, each representing an in-use control function, and the name of the control device's input that will control said functions. These input names must match their counterpart in Input Mapping (the control scheme should be created in your robot teleoperation project package, but an example called example_scheme.yaml can be found in the /config folder).
-3. `Control Node`   - The node that takes in the Input Mapping and Control Scheme .yaml files, and receives /joy messages to output the desired teleoperation message output (these can be foudn in the /src folder).
+## Essential Concepts
+To harness the full potential of Unified Teleop, understanding these core concepts is crucial:
 
-## Control Node Overview
-1. `cmd_vel_mirror_joystick`        - When provided a control scheme and input mapping, publishes Twist messages where the values mirror the user's inputs (e.g. the velocity values will mirror how you push the joystick).
-2. `point_stamped_incr_joystick`    - When provided a control scheme and input mapping, publishes PointStamped messages where the values increment based on the user's inputs (e.g. the positional values will increase the longer you press on the button).
-3. `point_stamped_mirror_joystick`  - When provided a control scheme and input mapping, publishes PointStamped messages where the values mirror the user's inputs (e.g. the positional values will mirror how you push the joystick).
-4. `twist_merger`                   - Takes in Twist messages from two different topics, merging the linear variable values from one with the angular variable values from the other to output a combined Twist message (for those looking to merge multiple control schemes or nodes).
+1. **Input Scheme:** This is a configuration that maps the physical controls of your device to identifiable input names, along with their index numbers in a `/joy` message. You can find these configurations in the `/config` directory, with pre-configured mappings for Dualshock 3 and 4 controllers, as well as the SpaceNav joystick and an annotated example, included. Users are encouraged to create and contribute mappings for additional devices.
+2. **Output Scheme:** This configuration specifies the associations between joystick node parameters and their corresponding functions, linked by the control device inputs named in the Input Scheme. While you should create Output Schemes within your own robot's package, an illustrative example in the `/example` directory is available for reference.
+3. **Teleop Node:**  It is the operational core that processes Input and Output Schemes, interprets `/joy` messages, and produces the relevant teleoperation messages. The Teleop Nodes are located in the `/src` directory, ready to be tailored to your project's requirements.
 
-## Common Demo
-To control the `turtlesim` with the `cmd_vel_mirror_joystick`, the demo `demo_dualshock4_turtlesim.launch` has been included to demonstrate an example on how to utilize the Unified Teleop package for controlling a robot, including the usage of Control Schemes and Input Mappings.
+These concepts work together to deliver a customizable and intuitive teleoperation experience, ensuring your commands are translated into precise robotic actions.
+Illustrative examples for these concepts are available in the `/example` directory. With an example Input Scheme being in the `/config` directory.
 
-Run `ros2 launch unified_teleop demo_dualshock4_turtlesim.launch.xml` and refer to `example_scheme.yaml` on how to control the `turtlesim`.
+## Overview of Teleop Nodes
+1. **Twist Mirror Node (`twist_mirror`):**  Interprets your Output and Input Schemes to produce `Twist` messages that directly reflect the magnitude and direction of your control inputs. For example, the velocity output will correspond proportionally to how far the joystick is pushed.
+2. **PointStamped Mirror Node (`point_stamped_mirror`):** Similar to the Twist Mirror Node, it publishes `PointStamped` messages that match the user's control actions, offering a mirrored, one-to-one mapping between joystick movement and positional output.
+3. **PointStamped Incremental Node (`point_stamped_incr`):** This node, configured with your Output and Input Schemes, emits `PointStamped` messages where the position values incrementally adjust based on continuous user inputs. For instance, pressing and holding a button causes a gradual increase in the position value.
+4. **Twist Merger Node (`twist_merger`):** A specialized node that fuses `Twist` messages from two distinct topics. It combines linear movements from one source with angular movements from another to output a cohesive `Twist` message. This functionality is particularly useful when you need to integrate multiple Output Schemes or control nodes for a unified motion command.
 
-Feel free to experiment with different control schemes, and try using different control devices by creating new input mappings!
+## Common Demos
+### Examples
+The `/example` directory contains annotated examples showcasing the essential features of the Unified Teleop package. With an example Input Scheme being in the `/config` directory.
 
+### Demo Setup
+To illustrate the package's capabilities, we've included the `demo_dualshock4.launch` file. This launch file sets up an environment for you to control the `turtlesim` node using `Twist` messages, showcasing the versatility of the Unified Teleop package with predefined Input and Output Schemes. Make sure to have the turtlesim package installed.
 
+### Running the Demo
+1. Start the `turtlesim` node by running:
 
-Bring up the other joy package and show the difference
+        ros2 run turtlesim turtlesim_node
 
-One input mapping per device type, then control schemes can be created using intuitive naming
+2. Launch the Unified Teleop demo with the following command:
 
-Eliminate jargon
+        ros2 launch unified_teleop demo_dualshock4.launch.xml
 
-Don't only provide Twist, but also Pointstamped, and different means
+3. Observe the command messages being published to the `turtle1/cmd_vel` topic:
 
-Have a whole section about WHY its different
+        ros2 topic echo /turtle1/cmd_vel
 
-Control scheme -> output scheme
-control node -> teleop node
+Refer to the `example_scheme.yaml` file for detailed control instructions tailored for the Dualshock 4 controller within the demo.
 
-remove _joystick
-
-copy over the rosnu function
+### Customization and Experimentation
+This demo encourages you to explore various configurations. Try adjusting the Output Scheme for different control styles or create new Input Schemes to use with alternative controllers. This flexibility allows you to customize the teleoperation experience to suit your project's needs or personal preferences. Install the turtlesim package (if not already installed) and use the provided launch file as a starting point for your teleoperation adventures.
