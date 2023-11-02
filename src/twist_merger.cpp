@@ -1,13 +1,12 @@
-/// NEED TO UPDATE DOCUMENTATION HERE
-
 /// @file
-/// @brief Publishes a series of series commands for the delta robot to move based on inputs from the gamepad
+/// @brief Publishes a series of Twist commands that combines the linear and angular components from two different Twist messages into one
 /// 
 /// @section Publishers
-///   cmd_vel (geometry_msgs/Twist) - A commanded twist for a 2D mobile robot (all values besides linear.x, linear.y, and angular.z must be zero)
+///   merged/cmd_vel (geometry_msgs/Twist) - A merged Twist message for robot teleoperation
 ///
 /// @section Subscribers
-///   joy (sensor_msgs/Joy) - A message containing current state of the gamepad inputs
+///   linear/cmd_vel (geometry_msgs/Twist)  - A Twist message in which its linear values will be merged
+///   angular/cmd_vel (geometry_msgs/Twist) - A Twist message in which its angular values will be merged
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -39,11 +38,11 @@ int main(int argc, char * argv[])
     rclcpp::Rate rate(1000); // ROS Rate at 1000Hz
 
     // Subscriber
-    auto linear_sub = node->create_subscription<geometry_msgs::msg::Twist>("linear/cmd_vel", 10, linear_callback);
-    auto angular_sub = node->create_subscription<geometry_msgs::msg::Twist>("angular/cmd_vel", 10, angular_callback);
+    auto linear_sub = node->create_subscription<geometry_msgs::msg::Twist>("linear/twist", 10, linear_callback);
+    auto angular_sub = node->create_subscription<geometry_msgs::msg::Twist>("angular/twist", 10, angular_callback);
 
     // Publisher
-    auto twist_pub = node->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 100); // puhlishing rate has to be 100, otherwise delta displays incorrect behaviour
+    auto twist_pub = node->create_publisher<geometry_msgs::msg::Twist>("merged/cmd_vel", 100);
     
     // Control loop
     while (rclcpp::ok())
