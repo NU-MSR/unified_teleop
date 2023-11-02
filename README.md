@@ -2,6 +2,8 @@
 ROS interface for joy messages from various types of control devices to do robot teleoperation with different control schemes.
 This package offers an intuitive method of creating customize control schemes, and allows for the use of a variety of input devices by creating your own input mappings.
 
+## How is this different from the standard teleop_twist_joy
+
 ## Requirements
 For whichever control device you intend to use (video game controller, SpaceNav, etc.), the joy package for that device will be required.
 
@@ -28,3 +30,22 @@ To control the `turtlesim` with the `cmd_vel_mirror_joystick`, the demo `demo_du
 Run `ros2 launch unified_teleop demo_dualshock4_turtlesim.launch.xml` and refer to `example_scheme.yaml` on how to control the `turtlesim`.
 
 Feel free to experiment with different control schemes, and try using different control devices by creating new input mappings!
+
+
+
+Bring up the other joy package and show the difference
+
+One input mapping per device type, then control schemes can be created using intuitive naming
+
+Eliminate jargon
+
+Don't only provide Twist, but also Pointstamped, and different means
+
+Have a whole section about WHY its different
+
+Control scheme -> output scheme
+control node -> teleop node
+
+remove _joystick
+
+copy over the rosnu function

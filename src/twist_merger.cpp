@@ -11,8 +11,6 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/twist.hpp"
-#include "omnid_core/parameters.h"
-#include "rosnu/rosnu.hpp"
 
 #include <string>
 #include <cmath>
