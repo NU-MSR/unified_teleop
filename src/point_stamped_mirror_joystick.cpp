@@ -66,6 +66,7 @@ static float z_max;
 static float alt_x_max;
 static float alt_y_max;
 static float alt_z_max;
+static float boundary_radius;
 static float lin_rate_chg_fac;
 static float x_offset;
 static float y_offset;
@@ -305,6 +306,7 @@ int main(int argc, char * argv[])
     y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *node, "Whether the input for this movement should be flipped");
     z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *node, "Whether the input for this movement should be flipped");
     // Modifier parameters
+    boundary_radius = rosnu::declare_and_get_param<float>("boundary_radius", 0.0f, *node, "Radius of the spherical space around the zero position that the robot can move in");
     lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's values");
     x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *node, "The offset for the message's zero value");
     y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *node, "The offset for the message's zero value");
@@ -373,6 +375,19 @@ int main(int argc, char * argv[])
                 geometry_msgs::msg::PointStamped adjusted_diff = normalize_pntstmp(diff_pntstmp, rate_of_change * lin_rate_chg_fac);
                 // Increment it on the new processed command
                 p_cmd = add_pntstmp(p_cmd, adjusted_diff);
+
+                // Implementing spherical positional boundary modifier
+                // Make sure the robot's position is constrained to the desired spherical space
+                if (boundary_radius != 0.0)
+                {
+                    // Find the robot's desired distance from home sqrd
+                    float distance_from_home_sqrd = pow(command.point.x, 2) + pow(command.point.y, 2) + pow(command.point.z, 2);
+                    // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
+                    if (distance_from_home_sqrd > pow(boundary_radius, 2))
+                    {
+                        p_cmd = normalize_pntstmp(p_cmd, boundary_radius);
+                    }
+                }
             }
             else
             {
