@@ -29,10 +29,11 @@
 ///  `~/y_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///  `~/z_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///
-///  `~/lin_rate_chg_fac (float) [default 0.0]`      - Factor to the rate of change for the output's values
-///  `~/x_offset (float) [default 0.0]`      - The offset for the message's zero value
-///  `~/y_offset (float) [default 0.0]`      - The offset for the message's zero value
-///  `~/z_offset (float) [default 0.0]`      - The offset for the message's zero value
+///  `~/boundary_radius (float) [default 0.0]`      - Radius of the spherical space around the zero position that the robot can move in
+///  `~/lin_rate_chg_fac (float) [default 0.0]`     - Factor to the rate of change for the output's values
+///  `~/x_offset (float) [default 0.0]`             - The offset for the message's zero value
+///  `~/y_offset (float) [default 0.0]`             - The offset for the message's zero value
+///  `~/z_offset (float) [default 0.0]`             - The offset for the message's zero value
 ///
 ///  `~/always_enable (bool) [default false]`      - Whether control input is always enabled (USE WITH CAUTION)
 ///
@@ -212,9 +213,10 @@ static bool control_enabled(MovementInput input);
 /// @param input - The controller input that will enable this function
 static void alt_enabled(MovementInput input);
 
-/// @brief Returns a Twist command that has zero for all of its fields
+/// @brief Returns a PointStamped command that has zero for all of its fields
 static geometry_msgs::msg::PointStamped zero_command();
 
+/// @brief Returns a PointStamped command that has the offset for all of its fields
 static geometry_msgs::msg::PointStamped offset_command();
 
 /// @brief Based on the current/input position, returns coords with an increase in x

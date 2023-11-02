@@ -44,14 +44,14 @@
 ///  `~/pitch_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///  `~/roll_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///
-///  `~/lin_rate_chg_fac (float) [default 0.0]`      - Factor to the rate of change for the output's linear values
-///  `~/ang_rate_chg_fac (float) [default 0.0]`      - Factor to the rate of change for the output's angular values
-///  `~/x_offset (float) [default 0.0]`      - The offset for the message's zero value
-///  `~/y_offset (float) [default 0.0]`      - The offset for the message's zero value
-///  `~/z_offset (float) [default 0.0]`      - The offset for the message's zero value
-///  `~/yaw_offset (float) [default 0.0]`      - The offset for the message's zero value
-///  `~/pitch_offset (float) [default 0.0]`      - The offset for the message's zero value
-///  `~/roll_offset (float) [default 0.0]`      - The offset for the message's zero value
+///  `~/lin_rate_chg_fac (float) [default 0.0]`     - Factor to the rate of change for the output's linear values
+///  `~/ang_rate_chg_fac (float) [default 0.0]`     - Factor to the rate of change for the output's angular values
+///  `~/x_offset (float) [default 0.0]`             - The offset for the message's zero value
+///  `~/y_offset (float) [default 0.0]`             - The offset for the message's zero value
+///  `~/z_offset (float) [default 0.0]`             - The offset for the message's zero value
+///  `~/yaw_offset (float) [default 0.0]`           - The offset for the message's zero value
+///  `~/pitch_offset (float) [default 0.0]`         - The offset for the message's zero value
+///  `~/roll_offset (float) [default 0.0]`          - The offset for the message's zero value
 ///
 ///  `~/always_enable (bool) [default false]`      - Whether control input is always enabled (USE WITH CAUTION)
 ///
