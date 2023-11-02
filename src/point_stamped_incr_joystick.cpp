@@ -29,6 +29,12 @@
 ///  `~/y_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///  `~/z_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///
+///  `~/boundary_radius (float) [default 0.0]`      - Radius of the spherical space around the zero position that the robot can move in
+///  `~/lin_rate_chg_fac (float) [default 0.0]`     - Factor to the rate of change for the output's values
+///  `~/x_offset (float) [default 0.0]`             - The offset for the message's zero value
+///  `~/y_offset (float) [default 0.0]`             - The offset for the message's zero value
+///  `~/z_offset (float) [default 0.0]`             - The offset for the message's zero value
+///
 ///  `~/always_enable (bool) [default false]`      - Whether control input is always enabled (USE WITH CAUTION)
 ///
 ///  `~/input_device_config_file (std::string) [default "dualshock4_mapping"]`      - Chosen input device config file
@@ -36,8 +42,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
-#include "omnid_core/parameters.h"
-#include "rosnu/rosnu.hpp"
 
 #include <string>
 #include <cmath>
@@ -52,6 +56,7 @@ static geometry_msgs::msg::PointStamped command;
 static sensor_msgs::msg::Joy latest_joy_state;
 static bool fresh_joy_state = false;
 static bool always_enable = false;
+static const float rate_of_change_denom = 1 * std::pow(10, 5); // USER CAN ADJUST, KEEP IT EXTREMELY SMALL
 
 float curr_x_max = 1.0;
 float curr_y_max = 1.0;
@@ -62,12 +67,14 @@ static float z_max;
 static float alt_x_max;
 static float alt_y_max;
 static float alt_z_max;
+static float boundary_radius;
+float lin_rate_chg_fac;
+static float x_offset;
+static float y_offset;
+static float z_offset;
 static bool x_flip;
 static bool y_flip;
 static bool z_flip;
-
-static const float incr_denom = 1 * std::pow(10, 5); // increment value chosen arbitrarily
-static float incr_mult = 1.0;
 
 /// @brief The input type of an input (Axis, Trigger, Button, None)
 enum class InputType
@@ -99,6 +106,91 @@ class MovementInput
         MovementInput(int index_no, InputType input_type) : index(index_no), type(input_type) {}
 };
 
+/// Additional parameter helper functions developed my NU MSR
+namespace rosnu
+{
+  /// @brief declare a parameter without a default value. If the value is not set externally,
+  /// an exception will be thrown when trying to get_param for this parameter.
+  /// @tparam T - type of the parameter
+  /// @param name - name of the parameter
+  /// @param node - node for which the parameter is declared
+  /// @param desc - (optional) the parameter description
+  /// @throw 
+  ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
+  ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
+  template<class T>
+  void declare_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
+  {
+    // init descriptor object and fill in description
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = desc;
+
+    // declare parameter without a default value
+    node.declare_parameter<T>(name, descriptor);
+  }
+
+  /// @brief declare a parameter with a default value.
+  /// @tparam T - type of the parameter
+  /// @param name - name of the parameter
+  /// @param def - the default parameter value
+  /// @param node - node for which the parameter is declared
+  /// @param desc - (optional) the parameter description
+  /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
+  template<class T>
+  void declare_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
+  {
+    // init descriptor object and fill in description
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = desc;
+    
+    // declare node with default value
+    node.declare_parameter<T>(name, def, descriptor);
+  }
+
+  /// @brief get the value of a parameter.
+  /// @tparam T - type of the parameter
+  /// @param name - name of the parameter
+  /// @param node - node for which the parameter was declared
+  /// @return value of the parameter
+  /// @throw rclcpp::exceptions::ParameterNotDeclaredException if the parameter has not been declared
+  template<class T>
+  T get_param(const std::string & name, rclcpp::Node & node)
+  {
+    return node.get_parameter(name).get_parameter_value().get<T>();
+  }
+  
+  /// @brief declare a parameter without a default value and return the parameter value.
+  /// @tparam T - type of the parameter
+  /// @param name - name of the parameter
+  /// @param node - node for which the parameter is declared
+  /// @param desc - (optional) the parameter description
+  /// @return value of the parameter
+  /// @throw 
+  ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
+  ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
+  template<class T>
+  T declare_and_get_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
+  {
+    declare_param<T>(name, node, desc);
+    return get_param<T>(name, node);
+  }
+
+  /// @brief declare a parameter with a default value and return the parameter value.
+  /// @tparam T - type of the parameter
+  /// @param name - name of the parameter
+  /// @param def - the default parameter value
+  /// @param node - node for which the parameter is declared
+  /// @param desc - (optional) the parameter description
+  /// @return value of the parameter
+  /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
+  template<class T>
+  T declare_and_get_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
+  {
+    declare_param<T>(name, def, node, desc);
+    return get_param<T>(name, node);
+  }
+}
+
 /// @brief Returns the type of the input based on its name
 ///        (Axis if it begins with an 'a', Trigger if it begins with a 't', Button if it begins with a 'b', and None if the string is empty)
 /// @param input_name - The name of the controller input
@@ -126,8 +218,11 @@ static void alt_enabled(MovementInput input);
 /// @param temp_command - The message that will be overwritten with new position coordinates for the robot
 static geometry_msgs::msg::PointStamped axes_reset(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
-/// @brief Returns a Twist command that has zero for all of its fields
+/// @brief Returns a PointStamped command that has zero for all of its fields
 static geometry_msgs::msg::PointStamped zero_command();
+
+/// @brief Returns a PointStamped command that has the offset for all of its fields
+static geometry_msgs::msg::PointStamped offset_command();
 
 /// @brief Based on the current/input position, returns coords with an increase in x
 /// @param input - The controller input that will indicate whether the position changes
@@ -159,6 +254,16 @@ static geometry_msgs::msg::PointStamped z_axis_inc(MovementInput input, geometry
 /// @param temp_command - The message that will be overwritten with new position coordinates for the robot
 static geometry_msgs::msg::PointStamped z_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
+/// @brief Returns a PointStamped message that normalizes the values to a given magnitude
+/// @param input_command - The PointStamped message that will be normalized
+/// @param new_mag - The desired magnitude for the resulting PointStamped message
+static geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::PointStamped input_command, float new_mag);
+
+/// @brief Returns a PointStamped message that reflects the sum between two given PointStamped messages
+/// @param subtracted - First part of PointStamped addition
+/// @param subtractor - Second part of the PointStamped addition
+static geometry_msgs::msg::PointStamped add_pntstmp(geometry_msgs::msg::PointStamped add1, geometry_msgs::msg::PointStamped add2);
+
 int main(int argc, char * argv[])
 {
     // ROS
@@ -186,7 +291,6 @@ int main(int argc, char * argv[])
     const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *node, "Button assigned to increase the z-axis value of the robot");
     const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *node, "Button assigned to decrease the z-axis value of the robot");
     // Additional parameters
-    incr_mult = rosnu::declare_and_get_param<float>("incr_mult", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
     x_max = rosnu::declare_and_get_param<float>("x_max", 1.0f, *node, "The maximum output value along that axis of movement");
     y_max = rosnu::declare_and_get_param<float>("y_max", 1.0f, *node, "The maximum output value along that axis of movement");
     z_max = rosnu::declare_and_get_param<float>("z_max", 1.0f, *node, "The maximum output value along that axis of movement");
@@ -196,6 +300,16 @@ int main(int argc, char * argv[])
     x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *node, "Whether the input for this movement should be flipped");
     y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *node, "Whether the input for this movement should be flipped");
     z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *node, "Whether the input for this movement should be flipped");
+    // Modifier parameters
+    boundary_radius = rosnu::declare_and_get_param<float>("boundary_radius", 0.0f, *node, "Radius of the spherical space around the zero position that the robot can move in");
+    lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
+    if (lin_rate_chg_fac == 0.0) // lin_rate_chg_fac cannot be 0.0
+    {
+        lin_rate_chg_fac = 1.0;
+    }
+    x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *node, "The offset for the message's zero value");
+    y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *node, "The offset for the message's zero value");
+    z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *node, "The offset for the message's zero value");
     // Whether control input is ALWAYS enabled
     always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *node, "Whether control input is always enabled (USE WITH CAUTION)");
     // Getting the input device config from launch file parameters
@@ -237,23 +351,38 @@ int main(int argc, char * argv[])
         {
             if(control_enabled(enable_input))
             {
-                geometry_msgs::msg::PointStamped temp_command = command;
+                // Reading the raw PointStamped commands
 
                 alt_enabled(alt_input);
 
-                temp_command = axes_reset(reset_input, temp_command);
-                temp_command = x_axis_inc(x_inc_input, temp_command);
-                temp_command = x_axis_dec(x_dec_input, temp_command);
-                temp_command = y_axis_inc(y_inc_input, temp_command);
-                temp_command = y_axis_dec(y_dec_input, temp_command);
-                temp_command = z_axis_inc(z_inc_input, temp_command);
-                temp_command = z_axis_dec(z_dec_input, temp_command);
+                command = x_axis_inc(x_inc_input, command);
+                command = x_axis_dec(x_dec_input, command);
+                command = y_axis_inc(y_inc_input, command);
+                command = y_axis_dec(y_dec_input, command);
+                command = z_axis_inc(z_inc_input, command);
+                command = z_axis_dec(z_dec_input, command);
+                command = axes_reset(reset_input, command);
 
-                command = temp_command;
+                // Implementing spherical positional boundary modifier
+                // Make sure the robot's position is constrained to the desired spherical space
+                if (boundary_radius != 0.0)
+                {
+                    // Find the robot's desired distance from home sqrd
+                    float distance_from_home_sqrd = pow(command.point.x, 2) + pow(command.point.y, 2) + pow(command.point.z, 2);
+                    // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
+                    if (distance_from_home_sqrd > pow(boundary_radius, 2))
+                    {
+                        command = normalize_pntstmp(command, boundary_radius);
+                    }
+                }
+
             }
-            command.header.stamp = current_time;
 
-            pntstmpd_pos_pub->publish(command);
+            // Adjust command so that it is offset as desired
+            geometry_msgs::msg::PointStamped offset_cmd = add_pntstmp(command, offset_command());
+
+            offset_cmd.header.stamp = current_time;
+            pntstmpd_pos_pub->publish(offset_cmd);
         }
         rclcpp::spin_some(node);
     }
@@ -361,6 +490,17 @@ static geometry_msgs::msg::PointStamped zero_command()
     return new_command;
 }
 
+static geometry_msgs::msg::PointStamped offset_command()
+{
+    geometry_msgs::msg::PointStamped new_command;
+
+    new_command.point.x = x_offset;
+    new_command.point.y = y_offset;
+    new_command.point.z = z_offset;
+
+    return new_command;
+}
+
 static geometry_msgs::msg::PointStamped x_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
     geometry_msgs::msg::PointStamped new_command = temp_command;
@@ -370,13 +510,13 @@ static geometry_msgs::msg::PointStamped x_axis_inc(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0)* pow(-1, x_flip);
+            new_command.point.x = new_command.point.x + (curr_x_max/rate_of_change_denom) * lin_rate_chg_fac * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0)* pow(-1, x_flip);
             break;
         case InputType::Trigger:
-            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0))* pow(-1, x_flip);
+            new_command.point.x = new_command.point.x + (curr_x_max/rate_of_change_denom) * lin_rate_chg_fac * (0.5 - (latest_joy_state.axes.at(input.index)/2.0))* pow(-1, x_flip);
             break;
         case InputType::Button:
-            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index)* pow(-1, x_flip);
+            new_command.point.x = new_command.point.x + (curr_x_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index)* pow(-1, x_flip);
             break;
     }
 
@@ -401,13 +541,13 @@ static geometry_msgs::msg::PointStamped x_axis_dec(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.x = new_command.point.x + (curr_x_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0)* pow(-1, x_flip);
+            new_command.point.x = new_command.point.x + (curr_x_max/rate_of_change_denom) * lin_rate_chg_fac * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0)* pow(-1, x_flip);
             break;
         case InputType::Trigger:
-            new_command.point.x = new_command.point.x - (curr_x_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0))* pow(-1, x_flip);
+            new_command.point.x = new_command.point.x - (curr_x_max/rate_of_change_denom) * lin_rate_chg_fac * (0.5 - (latest_joy_state.axes.at(input.index)/2.0))* pow(-1, x_flip);
             break;
         case InputType::Button:
-            new_command.point.x = new_command.point.x - (curr_x_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index)* pow(-1, x_flip);
+            new_command.point.x = new_command.point.x - (curr_x_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index)* pow(-1, x_flip);
             break;
     }
 
@@ -432,13 +572,13 @@ static geometry_msgs::msg::PointStamped y_axis_inc(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, y_flip);
+            new_command.point.y = new_command.point.y - (curr_y_max/rate_of_change_denom) * lin_rate_chg_fac * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, y_flip);
             break;
         case InputType::Trigger:
-            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, y_flip);
+            new_command.point.y = new_command.point.y - (curr_y_max/rate_of_change_denom) * lin_rate_chg_fac * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, y_flip);
             break;
         case InputType::Button:
-            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index) * pow(-1, y_flip);
+            new_command.point.y = new_command.point.y - (curr_y_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index) * pow(-1, y_flip);
             break;
     }
 
@@ -463,13 +603,13 @@ static geometry_msgs::msg::PointStamped y_axis_dec(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.y = new_command.point.y - (curr_y_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, y_flip);
+            new_command.point.y = new_command.point.y - (curr_y_max/rate_of_change_denom) * lin_rate_chg_fac * (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, y_flip);
             break;
         case InputType::Trigger:
-            new_command.point.y = new_command.point.y + (curr_y_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, y_flip);
+            new_command.point.y = new_command.point.y + (curr_y_max/rate_of_change_denom) * lin_rate_chg_fac * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, y_flip);
             break;
         case InputType::Button:
-            new_command.point.y = new_command.point.y + (curr_y_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index) * pow(-1, y_flip);
+            new_command.point.y = new_command.point.y + (curr_y_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index) * pow(-1, y_flip);
             break;
     }
 
@@ -494,13 +634,13 @@ static geometry_msgs::msg::PointStamped z_axis_inc(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, z_flip);
+            new_command.point.z = new_command.point.z + (curr_z_max/rate_of_change_denom) * lin_rate_chg_fac * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, z_flip);
             break;
         case InputType::Trigger:
-            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, z_flip);
+            new_command.point.z = new_command.point.z + (curr_z_max/rate_of_change_denom) * lin_rate_chg_fac * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, z_flip);
             break;
         case InputType::Button:
-            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index) * pow(-1, z_flip);
+            new_command.point.z = new_command.point.z + (curr_z_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index) * pow(-1, z_flip);
             break;
     }
 
@@ -525,13 +665,13 @@ static geometry_msgs::msg::PointStamped z_axis_dec(const MovementInput input, ge
         case InputType::None:
             break;
         case InputType::Axis:
-            new_command.point.z = new_command.point.z + (curr_z_max/incr_denom) * incr_mult * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, z_flip);
+            new_command.point.z = new_command.point.z + (curr_z_max/rate_of_change_denom) * lin_rate_chg_fac * (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0) * pow(-1, z_flip);
             break;
         case InputType::Trigger:
-            new_command.point.z = new_command.point.z - (curr_z_max/incr_denom) * incr_mult * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, z_flip);
+            new_command.point.z = new_command.point.z - (curr_z_max/rate_of_change_denom) * lin_rate_chg_fac * (0.5 - (latest_joy_state.axes.at(input.index)/2.0)) * pow(-1, z_flip);
             break;
         case InputType::Button:
-            new_command.point.z = new_command.point.z - (curr_z_max/incr_denom) * incr_mult * latest_joy_state.buttons.at(input.index) * pow(-1, z_flip);
+            new_command.point.z = new_command.point.z - (curr_z_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index) * pow(-1, z_flip);
             break;
     }
 
@@ -552,4 +692,34 @@ static void joy_callback(const sensor_msgs::msg::Joy & joy_state)
 {
     latest_joy_state = joy_state;
     fresh_joy_state = true;
+}
+
+static geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::PointStamped input_command, float new_mag)
+{
+    geometry_msgs::msg::PointStamped norm_command = input_command;
+    float magnitude = sqrt(input_command.point.x * input_command.point.x + input_command.point.y * input_command.point.y + input_command.point.z * input_command.point.z);
+    
+    if (new_mag == 0)
+    {
+        new_mag = magnitude;
+    }
+
+    // If magnitude != 0 adjust pos accordingly, otherwise return original vector
+    if (magnitude != 0)
+    {
+        norm_command.point.x = new_mag * norm_command.point.x / magnitude;
+        norm_command.point.y = new_mag * norm_command.point.y / magnitude;
+        norm_command.point.z = new_mag * norm_command.point.z / magnitude; 
+    }
+
+    return norm_command;
+}
+
+static geometry_msgs::msg::PointStamped add_pntstmp(geometry_msgs::msg::PointStamped add1, geometry_msgs::msg::PointStamped add2)
+{
+    geometry_msgs::msg::PointStamped new_command;
+    new_command.point.x = add1.point.x + add2.point.x;
+    new_command.point.y = add1.point.y + add2.point.y;
+    new_command.point.z = add1.point.z + add2.point.z;
+    return new_command;
 }
