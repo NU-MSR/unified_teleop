@@ -48,10 +48,11 @@
 
 using std::string;
 
-static geometry_msgs::msg::PointStamped command, old_command;
+static geometry_msgs::msg::PointStamped command, p_cmd, old_p_cmd;
 static sensor_msgs::msg::Joy latest_joy_state;
 static bool fresh_joy_state = false;
 static bool always_enable = false;
+const float rate_of_change = 1.5 * std::pow(10, -5); // USER CAN ADJUST, KEEP IT EXTREMELY SMALL
 
 float curr_x_max = 1.0;
 float curr_y_max = 1.0;
@@ -62,6 +63,10 @@ static float z_max;
 static float alt_x_max;
 static float alt_y_max;
 static float alt_z_max;
+static float lin_rate_chg_fac;
+static float x_offset;
+static float y_offset;
+static float z_offset;
 static bool x_flip;
 static bool y_flip;
 static bool z_flip;
@@ -121,6 +126,8 @@ static void alt_enabled(MovementInput input);
 /// @brief Returns a Twist command that has zero for all of its fields
 static geometry_msgs::msg::PointStamped zero_command();
 
+static geometry_msgs::msg::PointStamped offset_command();
+
 /// @brief Based on the current/input position, returns coords with an increase in x
 /// @param input - The controller input that will indicate whether the position changes
 /// @param temp_command - The message that will be overwritten with new position coordinates for the robot
@@ -154,6 +161,14 @@ static geometry_msgs::msg::PointStamped z_axis_dec(MovementInput input, geometry
 /// @brief Returns flipped positions depenending on parameters
 /// @param temp_command - The message that will be overwritten with new positions for the robot
 static geometry_msgs::msg::PointStamped flip_movement(geometry_msgs::msg::PointStamped temp_command);
+
+static geometry_msgs::msg::PointStamped subtract_pntstmp(geometry_msgs::msg::PointStamped subtracted, geometry_msgs::msg::PointStamped subtractor);
+
+static geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::PointStamped input_command, float new_mag);
+
+static geometry_msgs::msg::PointStamped add_pntstmp(geometry_msgs::msg::PointStamped add1, geometry_msgs::msg::PointStamped add2);
+
+static geometry_msgs::msg::PointStamped round_pntstmp(geometry_msgs::msg::PointStamped input_command);
 
 int main(int argc, char * argv[])
 {
@@ -190,6 +205,11 @@ int main(int argc, char * argv[])
     x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *node, "Whether the input for this movement should be flipped");
     y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *node, "Whether the input for this movement should be flipped");
     z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *node, "Whether the input for this movement should be flipped");
+    // Modifier parameters
+    lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's linear values");
+    x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *node, "The offset for the message's zero value");
+    y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *node, "The offset for the message's zero value");
+    z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *node, "The offset for the message's zero value");
     // Whether control input is ALWAYS enabled
     always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *node, "Whether control input is always enabled (USE WITH CAUTION)");
     // Getting the input device config from launch file parameters
@@ -221,6 +241,9 @@ int main(int argc, char * argv[])
 
     // Ensure upon start up, the message starts in the center position
     command = zero_command();
+    p_cmd = command;
+    old_p_cmd = p_cmd;
+
     // Control loop
     while (rclcpp::ok())
     {
@@ -232,24 +255,41 @@ int main(int argc, char * argv[])
 
             if(control_enabled(enable_input))
             {
-                geometry_msgs::msg::PointStamped temp_command = command;
+                // Reading the raw PointStamped commands
 
                 alt_enabled(alt_input);
+                command = z_axis_inc(z_inc_input, command);
+                command = z_axis_dec(z_dec_input, command);
+                command = x_axis_inc(x_inc_input, command);
+                command = x_axis_dec(x_dec_input, command);
+                command = y_axis_inc(y_inc_input, command);
+                command = y_axis_dec(y_dec_input, command);
 
-                temp_command = z_axis_inc(z_inc_input, temp_command);
-                temp_command = z_axis_dec(z_dec_input, temp_command);
-                temp_command = x_axis_inc(x_inc_input, temp_command);
-                temp_command = x_axis_dec(x_dec_input, temp_command);
-                temp_command = y_axis_inc(y_inc_input, temp_command);
-                temp_command = y_axis_dec(y_dec_input, temp_command);
-                temp_command = flip_movement(temp_command);
-
-                command = temp_command;
+                command = flip_movement(command);
+                
+                // Implementing rate of change modifier
+                // Get the diff between curr and new
+                geometry_msgs::msg::PointStamped diff_pntstmp = subtract_pntstmp(command, p_cmd);
+                // Adjust the diff so that it's within the set rate_of_change
+                geometry_msgs::msg::PointStamped adjusted_diff = normalize_pntstmp(diff_pntstmp, rate_of_change * lin_rate_chg_fac);
+                // Increment it on the new processed command
+                p_cmd = add_pntstmp(p_cmd, adjusted_diff);
             }
-        }
+            else
+            {
+                p_cmd = command;
+            }
 
-        command.header.stamp = current_time;
-        pos_pub->publish(command);
+            old_p_cmd = p_cmd;
+
+            // Adjust command so that it is offset as desired
+            geometry_msgs::msg::PointStamped offset_cmd = add_pntstmp(p_cmd, offset_command());
+            // Round the values of the message so that it does not sporadically change
+            offset_cmd = round_pntstmp(offset_cmd);
+
+            offset_cmd.header.stamp = current_time;
+            pos_pub->publish(offset_cmd);
+        }
         rclcpp::spin_some(node);
     }
     return 0;
@@ -313,6 +353,17 @@ static geometry_msgs::msg::PointStamped zero_command()
     new_command.point.x = 0.0;
     new_command.point.y = 0.0;
     new_command.point.z = 0.0;
+
+    return new_command;
+}
+
+static geometry_msgs::msg::PointStamped offset_command()
+{
+    geometry_msgs::msg::PointStamped new_command;
+
+    new_command.point.x = x_offset;
+    new_command.point.y = y_offset;
+    new_command.point.z = z_offset;
 
     return new_command;
 }
@@ -584,4 +635,53 @@ static void joy_callback(const sensor_msgs::msg::Joy & joy_state)
 {
     latest_joy_state = joy_state;
     fresh_joy_state = true;
+}
+
+static geometry_msgs::msg::PointStamped subtract_pntstmp(geometry_msgs::msg::PointStamped subtracted, geometry_msgs::msg::PointStamped subtractor)
+{
+    geometry_msgs::msg::PointStamped new_command;
+    new_command.point.x = subtracted.point.x - subtractor.point.x;
+    new_command.point.y = subtracted.point.y - subtractor.point.y;
+    new_command.point.z = subtracted.point.z - subtractor.point.z;
+    return new_command;
+}
+
+static geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::PointStamped input_command, float new_mag)
+{
+    geometry_msgs::msg::PointStamped norm_command = input_command;
+    float magnitude = sqrt(input_command.point.x * input_command.point.x + input_command.point.y * input_command.point.y + input_command.point.z * input_command.point.z);
+    
+    if (new_mag == 0)
+    {
+        new_mag = magnitude;
+    }
+
+    // If magnitude != 0 adjust pos accordingly, otherwise return original vector
+    if (magnitude != 0)
+    {
+        norm_command.point.x = new_mag * norm_command.point.x / magnitude;
+        norm_command.point.y = new_mag * norm_command.point.y / magnitude;
+        norm_command.point.z = new_mag * norm_command.point.z / magnitude; 
+    }
+
+    return norm_command;
+}
+
+static geometry_msgs::msg::PointStamped add_pntstmp(geometry_msgs::msg::PointStamped add1, geometry_msgs::msg::PointStamped add2)
+{
+    geometry_msgs::msg::PointStamped new_command;
+    new_command.point.x = add1.point.x + add2.point.x;
+    new_command.point.y = add1.point.y + add2.point.y;
+    new_command.point.z = add1.point.z + add2.point.z;
+    return new_command;
+}
+
+static geometry_msgs::msg::PointStamped round_pntstmp(geometry_msgs::msg::PointStamped input_command)
+{
+    geometry_msgs::msg::PointStamped new_command;
+    int precision = 3;
+    new_command.point.x = round(input_command.point.x * std::pow(10, precision))/std::pow(10, precision);
+    new_command.point.y = round(input_command.point.y * std::pow(10, precision))/std::pow(10, precision);
+    new_command.point.z = round(input_command.point.z * std::pow(10, precision))/std::pow(10, precision);
+    return new_command;
 }
