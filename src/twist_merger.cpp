@@ -38,11 +38,11 @@ int main(int argc, char * argv[])
     rclcpp::Rate rate(1000); // ROS Rate at 1000Hz
 
     // Subscriber
-    auto linear_sub = node->create_subscription<geometry_msgs::msg::Twist>("linear/twist", 10, linear_callback);
-    auto angular_sub = node->create_subscription<geometry_msgs::msg::Twist>("angular/twist", 10, angular_callback);
+    auto linear_sub = node->create_subscription<geometry_msgs::msg::Twist>("linear/cmd_vel", 10, linear_callback);
+    auto angular_sub = node->create_subscription<geometry_msgs::msg::Twist>("angular/cmd_vel", 10, angular_callback);
 
     // Publisher
-    auto twist_pub = node->create_publisher<geometry_msgs::msg::Twist>("merged/cmd_vel", 100);
+    auto twist_pub = node->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 100);
     
     // Control loop
     while (rclcpp::ok())
