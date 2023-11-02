@@ -1,0 +1,14 @@
+<launch>
+    <!-- run the joy node for the dualshock 4 -->
+    <node name="joy_node" pkg="joy" exec="joy_node">
+        <param from="$(find-pkg-share unified_teleop)/config/example_scheme.yaml" />
+    </node>
+
+    <!-- run the twist_mirror node -->
+    <node name="twist_mirror_node" pkg="unified_teleop" exec="twist_mirror">
+        <param from="$(find-pkg-share unified_teleop)/example/example_scheme.yaml" />
+        <param name="input_device_config" value="example_mapping" />
+        <remap from="cmd_vel" to="turtle1/cmd_vel" />
+    </node>
+
+</launch>

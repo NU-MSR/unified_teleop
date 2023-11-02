@@ -1,4 +1,4 @@
-name: "spacenav_joystick"
+name: "spacenav_mouse"
 mapping:
   axis_translate_y: 0
   axis_translate_x: 1
