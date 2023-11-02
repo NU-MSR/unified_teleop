@@ -29,6 +29,11 @@
 ///  `~/y_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///  `~/z_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///
+///  `~/lin_rate_chg_fac (float) [default 0.0]`      - Factor to the rate of change for the output's values
+///  `~/x_offset (float) [default 0.0]`      - The offset for the message's zero value
+///  `~/y_offset (float) [default 0.0]`      - The offset for the message's zero value
+///  `~/z_offset (float) [default 0.0]`      - The offset for the message's zero value
+///
 ///  `~/always_enable (bool) [default false]`      - Whether control input is always enabled (USE WITH CAUTION)
 ///
 ///  `~/input_device_config_file (std::string) [default "dualshock4_mapping"]`      - Chosen input device config file
@@ -36,8 +41,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
-#include "omnid_core/parameters.h"
-#include "rosnu/rosnu.hpp"
 
 #include <string>
 #include <cmath>
@@ -101,6 +104,91 @@ class MovementInput
         MovementInput(int index_no, InputType input_type) : index(index_no), type(input_type) {}
 };
 
+/// Additional parameter helper functions developed my NU MSR
+namespace rosnu
+{
+  /// @brief declare a parameter without a default value. If the value is not set externally,
+  /// an exception will be thrown when trying to get_param for this parameter.
+  /// @tparam T - type of the parameter
+  /// @param name - name of the parameter
+  /// @param node - node for which the parameter is declared
+  /// @param desc - (optional) the parameter description
+  /// @throw 
+  ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
+  ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
+  template<class T>
+  void declare_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
+  {
+    // init descriptor object and fill in description
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = desc;
+
+    // declare parameter without a default value
+    node.declare_parameter<T>(name, descriptor);
+  }
+
+  /// @brief declare a parameter with a default value.
+  /// @tparam T - type of the parameter
+  /// @param name - name of the parameter
+  /// @param def - the default parameter value
+  /// @param node - node for which the parameter is declared
+  /// @param desc - (optional) the parameter description
+  /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
+  template<class T>
+  void declare_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
+  {
+    // init descriptor object and fill in description
+    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+    descriptor.description = desc;
+    
+    // declare node with default value
+    node.declare_parameter<T>(name, def, descriptor);
+  }
+
+  /// @brief get the value of a parameter.
+  /// @tparam T - type of the parameter
+  /// @param name - name of the parameter
+  /// @param node - node for which the parameter was declared
+  /// @return value of the parameter
+  /// @throw rclcpp::exceptions::ParameterNotDeclaredException if the parameter has not been declared
+  template<class T>
+  T get_param(const std::string & name, rclcpp::Node & node)
+  {
+    return node.get_parameter(name).get_parameter_value().get<T>();
+  }
+  
+  /// @brief declare a parameter without a default value and return the parameter value.
+  /// @tparam T - type of the parameter
+  /// @param name - name of the parameter
+  /// @param node - node for which the parameter is declared
+  /// @param desc - (optional) the parameter description
+  /// @return value of the parameter
+  /// @throw 
+  ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
+  ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
+  template<class T>
+  T declare_and_get_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
+  {
+    declare_param<T>(name, node, desc);
+    return get_param<T>(name, node);
+  }
+
+  /// @brief declare a parameter with a default value and return the parameter value.
+  /// @tparam T - type of the parameter
+  /// @param name - name of the parameter
+  /// @param def - the default parameter value
+  /// @param node - node for which the parameter is declared
+  /// @param desc - (optional) the parameter description
+  /// @return value of the parameter
+  /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
+  template<class T>
+  T declare_and_get_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
+  {
+    declare_param<T>(name, def, node, desc);
+    return get_param<T>(name, node);
+  }
+}
+
 /// @brief Returns the type of the input based on its name
 ///        (Axis if it begins with an 'a', Trigger if it begins with a 't', Button if it begins with a 'b', and None if the string is empty)
 /// @param input_name - The name of the controller input
@@ -162,12 +250,23 @@ static geometry_msgs::msg::PointStamped z_axis_dec(MovementInput input, geometry
 /// @param temp_command - The message that will be overwritten with new positions for the robot
 static geometry_msgs::msg::PointStamped flip_movement(geometry_msgs::msg::PointStamped temp_command);
 
+/// @brief Returns a PointStamped message that reflects the difference between two given PointStamped messages
+/// @param subtracted - The PointStamped message that will be subtracted
+/// @param subtractor - The PointStamped message that will be subtracting from the subtracted
 static geometry_msgs::msg::PointStamped subtract_pntstmp(geometry_msgs::msg::PointStamped subtracted, geometry_msgs::msg::PointStamped subtractor);
 
+/// @brief Returns a PointStamped message that normalizes the values to a given magnitude
+/// @param input_command - The PointStamped message that will be normalized
+/// @param new_mag - The desired magnitude for the resulting PointStamped message
 static geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::PointStamped input_command, float new_mag);
 
+/// @brief Returns a PointStamped message that reflects the sum between two given PointStamped messages
+/// @param subtracted - First part of PointStamped addition
+/// @param subtractor - Second part of the PointStamped addition
 static geometry_msgs::msg::PointStamped add_pntstmp(geometry_msgs::msg::PointStamped add1, geometry_msgs::msg::PointStamped add2);
 
+/// @brief Returns a PointStamped message that with rounded values to a certain decimal point
+/// @param input_command - The PointStamped message that will be rounded
 static geometry_msgs::msg::PointStamped round_pntstmp(geometry_msgs::msg::PointStamped input_command);
 
 int main(int argc, char * argv[])
@@ -206,7 +305,7 @@ int main(int argc, char * argv[])
     y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *node, "Whether the input for this movement should be flipped");
     z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *node, "Whether the input for this movement should be flipped");
     // Modifier parameters
-    lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's linear values");
+    lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's values");
     x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *node, "The offset for the message's zero value");
     y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *node, "The offset for the message's zero value");
     z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *node, "The offset for the message's zero value");
@@ -266,7 +365,7 @@ int main(int argc, char * argv[])
                 command = y_axis_dec(y_dec_input, command);
 
                 command = flip_movement(command);
-                
+
                 // Implementing rate of change modifier
                 // Get the diff between curr and new
                 geometry_msgs::msg::PointStamped diff_pntstmp = subtract_pntstmp(command, p_cmd);
