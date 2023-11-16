@@ -105,10 +105,14 @@ install(TARGETS
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
+# install example files
 install(DIRECTORY example DESTINATION share/${PROJECT_NAME})
 
 # install configuration files
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+
+# install testing files
+install(DIRECTORY test DESTINATION share/${PROJECT_NAME})
 
 #############
 ## Testing ##
