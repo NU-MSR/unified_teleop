@@ -10,22 +10,15 @@
     <!-- Specific launch arguments can also be included at the user's discretion -->
     <arg 
         name='test_duration'
-        default='2.5'
+        default='5.0'
         description='Max length of test in seconds.'
     />
 
     <!-- Run the Teleop Nodes to be tested -->
-    <!-- The twist_mirror node -->
-    <node name="twist_mirror_node" pkg="unified_teleop" exec="twist_mirror">
-        <param from="$(find-pkg-share unified_teleop)/test/example_scheme.yaml" />
-        <param name="input_device_config" value="example_mapping" />
-        <remap from="cmd_vel" to="twist_mirror/cmd_vel" />
-    </node>
-
     <!-- The point_stamped_mirror node -->
     <node name="point_stamped_mirror_node" pkg="unified_teleop" exec="point_stamped_mirror">
-        <param from="$(find-pkg-share unified_teleop)/example/example_scheme.yaml" />
-        <param name="input_device_config" value="example_mapping" />
+        <param from="$(find-pkg-share unified_teleop)/test/output_scheme_test.yaml" />
+        <param name="input_device_config" value="input_mapping_test" />
         <remap from="desired_position" to="point_stamped_mirror/desired_position" />
     </node>
 
@@ -38,9 +31,8 @@
     "test_duration" example below.
     -->
     <catch2_integration_test_node
-        pkg='catch_ros2'
-        exec='integration_test_node'
-    >
+        pkg='unified_teleop'
+        exec='integration_test_node'>
         <param name='test_duration' value='$(var test_duration)'/>
     </catch2_integration_test_node>
 </launch>

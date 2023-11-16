@@ -1,31 +1,68 @@
-# An annotated version example control scheme
-# This assumes the use of a dualshock 4 controller, with the joy and twist_mirror nodes
-
-# Wildcard to account for use of namespaces
 /**:
-  # joy node that sends the /joy messages reflecting the inputs pressed on the dualshock 4
-  # to the twist_mirror node
   joy_node:
     ros__parameters:
       device_id: 0
       deadzone: 0.1
       autorepeat_rate: 20.0
 
-  # Node that listens to the /joy topic and outputs Twist messages for teleoperation
   twist_mirror_node:
-    # More details on each of these parameters can be found in the twist_mirror file,
-    # and ensure that the string name of the assigned input matches that of it in the input mapping
     ros__parameters:
-      x_axis_inc: "axis_left_stick_y" # Map the desired control scheme function to the desired input from the controller device
+      x_axis_inc: "axis_left_stick_y"
       x_axis_dec: "axis_left_stick_y"
-      yaw_inc: "axis_right_stick_x"  # Certain input types (e.g. joysticks, triggers, directional buttons) are mapped twice to complimentary control functions
-                                                # that affect the robot's 6 Degrees of Freedom, such as z_axis_inc & z_axis_dec.
-      yaw_dec: "axis_right_stick_x"  # If the input is assigned to only one of two complimentary control functions, the input related to the unmapped control function
-                                                # will not do anything (e.g. if the y-axis of the left joystick is mapped to the decrease of the x-axis, pushing the left joystick
-                                                # up will not affect anything).
+      y_axis_inc: "axis_directional_buttons_x"
+      y_axis_dec: "axis_directional_buttons_x"
+      yaw_inc: "axis_left_stick_x"
+      yaw_dec: "axis_left_stick_x"
 
       enable_control: "button_r1"
+      alt_enable: "button_l1"
 
-      x_max: 7.0
-      y_max: 7.0
-      yaw_max: 4.5
+  point_stamped_mirror_node:
+    ros__parameters:
+      x_axis_inc: "axis_right_stick_y"
+      x_axis_dec: "axis_right_stick_y"
+      y_axis_inc: "axis_right_stick_x"
+      y_axis_dec: "axis_right_stick_x"
+      z_axis_inc: "trigger_r2"
+      z_axis_dec: "trigger_l2"
+
+      enable_control: "button_r1"
+      alt_enable: "button_l1"
+
+      # x_max: 0.3
+      # y_max: 0.3
+      # z_max: 0.3
+      # alt_x_max: 0.15
+      # alt_y_max: 0.15
+      # alt_z_max: 0.15
+
+      # reset_enable: "button_cross"
+
+      # lin_rate_chg_fac: 2.0
+      # boundary_radius: 0.13
+      # z_offset: 0.355
+
+  point_stamped_incr_node:
+    ros__parameters:
+      x_axis_inc: "axis_right_stick_y"
+      x_axis_dec: "axis_right_stick_y"
+      y_axis_inc: "axis_right_stick_x"
+      y_axis_dec: "axis_right_stick_x"
+      z_axis_inc: "trigger_r2"
+      z_axis_dec: "trigger_l2"
+
+      enable_control: "button_r1"
+      alt_enable: "button_l1"
+
+      # x_max: 0.3
+      # y_max: 0.3
+      # z_max: 0.3
+      # alt_x_max: 0.15
+      # alt_y_max: 0.15
+      # alt_z_max: 0.15
+
+      # reset_enable: "button_cross"
+
+      # lin_rate_chg_fac: 2.0
+      # boundary_radius: 0.13
+      # z_offset: 0.355

@@ -11,6 +11,7 @@
 
   <url type="repository">https://github.com/dkoh555/numsr_contoller_interface</url>
 
+  <author email="damienkoh2025@u.northwestern.edu">Damien Koh</author>
   <author email="elwin@northwestern.edu">Matthew Elwin</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -23,6 +24,8 @@
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>std_srvs</depend>
+
+  <depend>catch_ros2</depend>
 
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>

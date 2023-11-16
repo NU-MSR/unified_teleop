@@ -4,6 +4,7 @@ find_package(cmakeme REQUIRED)
 cmakeme_defaults(Debug)
 
 # find dependencies
+find_package(catch_ros2 REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
@@ -81,6 +82,25 @@ target_link_libraries(${PROJECT_NAME}_twist_merger
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
+# # integration_test
+# add_executable(${PROJECT_NAME}_integration_test_node test/integration_test_node.cpp)
+# set_target_properties(${PROJECT_NAME}_integration_test_node
+#   PROPERTIES
+#   OUTPUT_NAME integration_test_node
+#   PREFIX ""
+# )
+# ament_target_dependencies(${PROJECT_NAME}_integration_test_node
+#   ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+# )
+# target_link_libraries(${PROJECT_NAME}_integration_test_node
+#   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+#   catch_ros2::catch_ros2_with_node_main
+# )
+#
+# target_link_libraries(integration_test_node
+#   catch_ros2::catch_ros2_with_node_main
+# )
+
 #############
 ## Install ##
 #############
@@ -129,6 +149,39 @@ if(BUILD_TESTING)
   # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  ###########################
+  ## INTEGRATION TEST NODE ##
+  ###########################
+  include(CTest)
+
+  # integration_test
+  add_executable(${PROJECT_NAME}_integration_test_node test/integration_test_node.cpp)
+  set_target_properties(${PROJECT_NAME}_integration_test_node
+    PROPERTIES
+    OUTPUT_NAME integration_test_node
+    PREFIX ""
+  )
+  ament_target_dependencies(${PROJECT_NAME}_integration_test_node
+    ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+  )
+  target_link_libraries(${PROJECT_NAME}_integration_test_node
+    ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+    catch_ros2::catch_ros2_with_node_main
+  )
+  install(TARGETS
+    ${PROJECT_NAME}_integration_test_node
+    RUNTIME DESTINATION lib/${PROJECT_NAME}
+  )
+
+  #################
+  ## LAUNCH FILE ##
+  #################
+  # # This is the launch file that will be used to run the integration test
+  # install(FILES
+  #   test/integration_test.launch.xml  # example in XML
+  #   DESTINATION share/${PROJECT_NAME}
+  # )
 
   endif()
 
