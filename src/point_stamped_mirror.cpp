@@ -383,7 +383,7 @@ int main(int argc, char * argv[])
                 if (boundary_radius != 0.0)
                 {
                     // Find the robot's desired distance from home sqrd
-                    float distance_from_home_sqrd = pow(command.point.x, 2) + pow(command.point.y, 2) + pow(command.point.z, 2);
+                    float distance_from_home_sqrd = pow(p_cmd.point.x, 2) + pow(p_cmd.point.y, 2) + pow(p_cmd.point.z, 2);
                     // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
                     if (distance_from_home_sqrd > pow(boundary_radius, 2))
                     {
