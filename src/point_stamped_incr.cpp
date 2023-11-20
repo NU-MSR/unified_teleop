@@ -30,7 +30,7 @@
 ///  `~/z_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///
 ///  `~/boundary_radius (float) [default 0.0]`      - Radius of the spherical space around the zero position that the robot can move in
-///  `~/lin_rate_chg_fac (float) [default 0.0]`     - Factor to the rate of change for the output's values
+///  `~/lin_rate_chg_fac (float) [default 1.0]`     - Factor to the rate of change for the output's values
 ///  `~/x_offset (float) [default 0.0]`             - The offset for the message's zero value
 ///  `~/y_offset (float) [default 0.0]`             - The offset for the message's zero value
 ///  `~/z_offset (float) [default 0.0]`             - The offset for the message's zero value
