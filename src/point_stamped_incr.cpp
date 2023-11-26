@@ -58,7 +58,7 @@ using std::string;
 
 static geometry_msgs::msg::PointStamped command;
 static sensor_msgs::msg::Joy latest_joy_state;
-static bool fresh_joy_state = false;
+static bool fresh_joy_state;
 static bool always_enable = false;
 static const float rate_of_change_denom = 1 * std::pow(10, 5); // USER CAN ADJUST, KEEP IT EXTREMELY SMALL
 
@@ -274,6 +274,7 @@ using std::placeholders::_1;
 class PointStampedIncrNode : public rclcpp::Node
 {
     public:
+        bool is_joy_freq;
         MovementInput enable_input;
         MovementInput reset_input;
         MovementInput alt_input;
@@ -290,7 +291,7 @@ class PointStampedIncrNode : public rclcpp::Node
             // PARAMETERS
             //
             // Frequency of publisher
-            const double pub_frequency = rosnu::declare_and_get_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
+            double pub_frequency = rosnu::declare_and_get_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
             // Function -> Controller input assignments from control scheme parameters
             const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *this, "Button assigned to enable control inputs");
             const std::string reset_assignment = rosnu::declare_and_get_param<std::string>("reset_enable", "UNUSED", *this, "Button assigned to reset robot position");
@@ -368,6 +369,18 @@ class PointStampedIncrNode : public rclcpp::Node
             //
             // Ensure upon start up, the robot starts in the center position
             command = zero_command();
+            // If frequency set to 0, then only publishes messages when a new joy message is received
+            // but timer will still have a frequency of 100.0
+            if (pub_frequency == 0.0)
+            {
+                is_joy_freq = true;
+                pub_frequency = 100.0;
+            }
+            else
+            {
+                is_joy_freq = false;
+            }
+            fresh_joy_state = false;
 
             //
             // TIMER CALLBACK
@@ -377,19 +390,26 @@ class PointStampedIncrNode : public rclcpp::Node
         
         void timer_callback()
         {
-            RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TESTING");
+            // RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TESTING");
             rclcpp::Time current_time = rclcpp::Clock().now();
 
             if (fresh_joy_state == true)
             {
+                // If frequency set to 0, then only publishes messages when a new joy message is received
+                RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 0");
+                if (is_joy_freq)
+                {
+                    RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 1");
+                    fresh_joy_state = false;
+                }
+
                 if(control_enabled(enable_input))
                 {
                     // Reading the raw PointStamped commands
-                    RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 1");
 
                     alt_enabled(alt_input);
 
-                    RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 2");
+                    // RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 2");
 
                     command = x_axis_inc(x_inc_input, command);
                     command = x_axis_dec(x_dec_input, command);
@@ -411,22 +431,21 @@ class PointStampedIncrNode : public rclcpp::Node
                             command = normalize_pntstmp(command, boundary_radius);
                         }
                     }
-
                 }
+
+                // Adjust command so that it is offset as desired
+                geometry_msgs::msg::PointStamped offset_cmd = add_pntstmp(command, offset_command());
+
+                offset_cmd.header.stamp = current_time;
+                pntstmpd_pos_pub->publish(offset_cmd);
             }
-
-            // Adjust command so that it is offset as desired
-            geometry_msgs::msg::PointStamped offset_cmd = add_pntstmp(command, offset_command());
-
-            offset_cmd.header.stamp = current_time;
-            pntstmpd_pos_pub->publish(offset_cmd);
         }
         rclcpp::TimerBase::SharedPtr timer_;
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pntstmpd_pos_pub;
 
         void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state) const
         {
-            RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 0");
+            RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST JOY");
             latest_joy_state = *joy_state;
             fresh_joy_state = true;
         }
