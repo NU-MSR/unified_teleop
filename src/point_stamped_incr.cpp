@@ -50,6 +50,10 @@
 #include <iostream>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
+#include <chrono>
+#include <functional>
+#include <memory>
+
 using std::string;
 
 static geometry_msgs::msg::PointStamped command;
@@ -201,9 +205,9 @@ static InputType input_type(std::string input_name);
 /// @param map - The button mapping based on the input device config file
 static MovementInput function_input(std::string input_assignment, std::map<std::string, int> map);
 
-/// @brief Handler for a joy message
-/// @param joy_state - The state of the inputs of the controller
-static void joy_callback(const sensor_msgs::msg::Joy & joy_state);
+// /// @brief Handler for a joy message
+// /// @param joy_state - The state of the inputs of the controller
+// static void joy_callback(const sensor_msgs::msg::Joy & joy_state);
 
 /// @brief Returns true if control inputs are enabled based on controller input
 /// @param input - The controller input that will enable this function
@@ -264,118 +268,151 @@ static geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::Po
 /// @param subtractor - Second part of the PointStamped addition
 static geometry_msgs::msg::PointStamped add_pntstmp(geometry_msgs::msg::PointStamped add1, geometry_msgs::msg::PointStamped add2);
 
-int main(int argc, char * argv[])
+using namespace std::chrono_literals;
+using std::placeholders::_1;
+
+class PointStampedIncrNode : public rclcpp::Node
 {
-    // ROS
-    rclcpp::init(argc, argv);
-    auto node = rclcpp::Node::make_shared("point_stamped_incr");
-    rclcpp::Rate rate(1000); // ROS Rate at 1000Hz
+    public:
+        MovementInput enable_input;
+        MovementInput reset_input;
+        MovementInput alt_input;
+        MovementInput x_inc_input;
+        MovementInput x_dec_input;
+        MovementInput y_inc_input;
+        MovementInput y_dec_input;
+        MovementInput z_inc_input;
+        MovementInput z_dec_input;
 
-    // Subscriber
-    auto joy_sub = node->create_subscription<sensor_msgs::msg::Joy>("joy", 10, joy_callback);
-
-    // Publisher
-    auto pntstmpd_pos_pub = node->create_publisher<geometry_msgs::msg::PointStamped>("desired_position", 100); // puhlishing rate has to be 100
-    
-    //
-    // Declaring and getting parameters
-    //
-    // Function -> Controller input assignments from control scheme parameters
-    const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *node, "Button assigned to enable control inputs");
-    const std::string reset_assignment = rosnu::declare_and_get_param<std::string>("reset_enable", "UNUSED", *node, "Button assigned to reset robot position");
-    const std::string alt_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *node, "Button assigned to activate alternative max values");
-    const std::string x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *node, "Button assigned to increase the x-axis value of the robot");
-    const std::string x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *node, "Button assigned to decrease the x-axis value of the robot");
-    const std::string y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *node, "Button assigned to increase the y-axis value of the robot");
-    const std::string y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *node, "Button assigned to decrease the y-axis value of the robot");
-    const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *node, "Button assigned to increase the z-axis value of the robot");
-    const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *node, "Button assigned to decrease the z-axis value of the robot");
-    // Additional parameters
-    x_max = rosnu::declare_and_get_param<float>("x_max", 1.0f, *node, "The maximum output value along that axis of movement");
-    y_max = rosnu::declare_and_get_param<float>("y_max", 1.0f, *node, "The maximum output value along that axis of movement");
-    z_max = rosnu::declare_and_get_param<float>("z_max", 1.0f, *node, "The maximum output value along that axis of movement");
-    alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
-    alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
-    alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
-    x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *node, "Whether the input for this movement should be flipped");
-    y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *node, "Whether the input for this movement should be flipped");
-    z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *node, "Whether the input for this movement should be flipped");
-    // Modifier parameters
-    boundary_radius = rosnu::declare_and_get_param<float>("boundary_radius", 0.0f, *node, "Radius of the spherical space around the zero position that the robot can move in");
-    lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 1.0f, *node, "The scale in which the movement speed is multiplied by along that axis of movement");
-    if (lin_rate_chg_fac == 0.0) // lin_rate_chg_fac cannot be 0.0
-    {
-        lin_rate_chg_fac = 1.0;
-    }
-    x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *node, "The offset for the message's zero value");
-    y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *node, "The offset for the message's zero value");
-    z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *node, "The offset for the message's zero value");
-    // Whether control input is ALWAYS enabled
-    always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *node, "Whether control input is always enabled (USE WITH CAUTION)");
-    // Getting the input device config from launch file parameters
-    const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *node, "Chosen input device config file");
-    
-    // Creating a controller input -> associated joy message index number map from the input device config file
-    std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
-    std::string full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
-    YAML::Node input_device = YAML::LoadFile(full_path);
-    // Getting the input device name and printing it to the serial
-    const std::string device_name = input_device["name"].as<string>();
-    RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), ("Currently using the " + device_name + " input device").c_str());
-    // Creating the button map from the input device config file
-    std::map<std::string, int> button_map;
-    for (const auto& it : input_device["mapping"])
-    {
-        button_map[it.first.as<std::string>()] = it.second.as<int>();
-    }
-    
-    // Creating MovementInputs from the retrieved input assignments parameters and created button mapping
-    MovementInput enable_input = function_input(enable_assignment, button_map);
-    MovementInput reset_input = function_input(reset_assignment, button_map);
-    MovementInput alt_input = function_input(alt_assignment, button_map);
-    MovementInput x_inc_input = function_input(x_inc_assignment, button_map);
-    MovementInput x_dec_input = function_input(x_dec_assignment, button_map);
-    MovementInput y_inc_input = function_input(y_inc_assignment, button_map);
-    MovementInput y_dec_input = function_input(y_dec_assignment, button_map);
-    MovementInput z_inc_input = function_input(z_inc_assignment, button_map);
-    MovementInput z_dec_input = function_input(z_dec_assignment, button_map);
-
-    // Ensure upon start up, the robot starts in the center position
-    command = zero_command();
-    // Control loop
-    while (rclcpp::ok())
-    {
-        rclcpp::Time current_time = rclcpp::Clock().now();
-
-        if(fresh_joy_state)
+        PointStampedIncrNode() : Node("point_stamped_incr")
         {
-            if(control_enabled(enable_input))
+            //
+            // PARAMETERS
+            //
+            // Frequency of publisher
+            const double pub_frequency = rosnu::declare_and_get_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
+            // Function -> Controller input assignments from control scheme parameters
+            const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *this, "Button assigned to enable control inputs");
+            const std::string reset_assignment = rosnu::declare_and_get_param<std::string>("reset_enable", "UNUSED", *this, "Button assigned to reset robot position");
+            const std::string alt_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *this, "Button assigned to activate alternative max values");
+            const std::string x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *this, "Button assigned to increase the x-axis value of the robot");
+            const std::string x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *this, "Button assigned to decrease the x-axis value of the robot");
+            const std::string y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *this, "Button assigned to increase the y-axis value of the robot");
+            const std::string y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *this, "Button assigned to decrease the y-axis value of the robot");
+            const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *this, "Button assigned to increase the z-axis value of the robot");
+            const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *this, "Button assigned to decrease the z-axis value of the robot");
+            // Additional parameters
+            x_max = rosnu::declare_and_get_param<float>("x_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            y_max = rosnu::declare_and_get_param<float>("y_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            z_max = rosnu::declare_and_get_param<float>("z_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *this, "Whether the input for this movement should be flipped");
+            y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *this, "Whether the input for this movement should be flipped");
+            z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *this, "Whether the input for this movement should be flipped");
+            // Modifier parameters
+            boundary_radius = rosnu::declare_and_get_param<float>("boundary_radius", 0.0f, *this, "Radius of the spherical space around the zero position that the robot can move in");
+            lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 1.0f, *this, "The scale in which the movement speed is multiplied by along that axis of movement");
+            if (lin_rate_chg_fac == 0.0) // lin_rate_chg_fac cannot be 0.0
             {
-                // Reading the raw PointStamped commands
+                lin_rate_chg_fac = 1.0;
+            }
+            x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *this, "The offset for the message's zero value");
+            y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *this, "The offset for the message's zero value");
+            z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *this, "The offset for the message's zero value");
+            // Whether control input is ALWAYS enabled
+            always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *this, "Whether control input is always enabled (USE WITH CAUTION)");
 
-                alt_enabled(alt_input);
+            //
+            // SUBSCRIBERS
+            //
+            joy_sub = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10, std::bind(&PointStampedIncrNode::joy_callback, this, _1));
 
-                command = x_axis_inc(x_inc_input, command);
-                command = x_axis_dec(x_dec_input, command);
-                command = y_axis_inc(y_inc_input, command);
-                command = y_axis_dec(y_dec_input, command);
-                command = z_axis_inc(z_inc_input, command);
-                command = z_axis_dec(z_dec_input, command);
-                command = axes_reset(reset_input, command);
+            //
+            // PUBLISHERS
+            //
+            pntstmpd_pos_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("desired_position", 100);
 
-                // Implementing spherical positional boundary modifier
-                // Make sure the robot's position is constrained to the desired spherical space
-                if (boundary_radius != 0.0)
+            //
+            // INTEGRATING INPUT & OUTPUT SCHEMES
+            //
+            // Getting the input device config from launch file parameters
+            const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *this, "Chosen input device config file");
+            // Creating a controller input -> associated joy message index number map from the input device config file
+            std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
+            std::string full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
+            YAML::Node input_device = YAML::LoadFile(full_path);
+            // Getting the input device name and printing it to the serial
+            const std::string device_name = input_device["name"].as<string>();
+            RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), ("Currently using the " + device_name + " input device").c_str());
+            // Creating the button map from the input device config file
+            std::map<std::string, int> button_map;
+            for (const auto& it : input_device["mapping"])
+            {
+                button_map[it.first.as<std::string>()] = it.second.as<int>();
+            }
+            // Creating MovementInputs from the retrieved input assignments parameters and created button mapping
+            enable_input = function_input(enable_assignment, button_map);
+            reset_input = function_input(reset_assignment, button_map);
+            alt_input = function_input(alt_assignment, button_map);
+            x_inc_input = function_input(x_inc_assignment, button_map);
+            x_dec_input = function_input(x_dec_assignment, button_map);
+            y_inc_input = function_input(y_inc_assignment, button_map);
+            y_dec_input = function_input(y_dec_assignment, button_map);
+            z_inc_input = function_input(z_inc_assignment, button_map);
+            z_dec_input = function_input(z_dec_assignment, button_map);
+
+            //
+            // INITIALIZING VARIABLES
+            //
+            // Ensure upon start up, the robot starts in the center position
+            command = zero_command();
+
+            //
+            // TIMER CALLBACK
+            //
+            timer_ = this->create_wall_timer(1.0s/pub_frequency, std::bind(&PointStampedIncrNode::timer_callback, this));
+        }
+        
+        void timer_callback()
+        {
+            RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TESTING");
+            rclcpp::Time current_time = rclcpp::Clock().now();
+
+            if (fresh_joy_state == true)
+            {
+                if(control_enabled(enable_input))
                 {
-                    // Find the robot's desired distance from home sqrd
-                    float distance_from_home_sqrd = pow(command.point.x, 2) + pow(command.point.y, 2) + pow(command.point.z, 2);
-                    // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
-                    if (distance_from_home_sqrd > pow(boundary_radius, 2))
-                    {
-                        command = normalize_pntstmp(command, boundary_radius);
-                    }
-                }
+                    // Reading the raw PointStamped commands
+                    RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 1");
 
+                    alt_enabled(alt_input);
+
+                    RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 2");
+
+                    command = x_axis_inc(x_inc_input, command);
+                    command = x_axis_dec(x_dec_input, command);
+                    command = y_axis_inc(y_inc_input, command);
+                    command = y_axis_dec(y_dec_input, command);
+                    command = z_axis_inc(z_inc_input, command);
+                    command = z_axis_dec(z_dec_input, command);
+                    command = axes_reset(reset_input, command);
+
+                    // Implementing spherical positional boundary modifier
+                    // Make sure the robot's position is constrained to the desired spherical space
+                    if (boundary_radius != 0.0)
+                    {
+                        // Find the robot's desired distance from home sqrd
+                        float distance_from_home_sqrd = pow(command.point.x, 2) + pow(command.point.y, 2) + pow(command.point.z, 2);
+                        // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
+                        if (distance_from_home_sqrd > pow(boundary_radius, 2))
+                        {
+                            command = normalize_pntstmp(command, boundary_radius);
+                        }
+                    }
+
+                }
             }
 
             // Adjust command so that it is offset as desired
@@ -384,8 +421,23 @@ int main(int argc, char * argv[])
             offset_cmd.header.stamp = current_time;
             pntstmpd_pos_pub->publish(offset_cmd);
         }
-        rclcpp::spin_some(node);
-    }
+        rclcpp::TimerBase::SharedPtr timer_;
+        rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pntstmpd_pos_pub;
+
+        void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state) const
+        {
+            RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 0");
+            latest_joy_state = *joy_state;
+            fresh_joy_state = true;
+        }
+        rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub;
+};
+
+int main(int argc, char * argv[])
+{
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<PointStampedIncrNode>());
+    rclcpp::shutdown();
     return 0;
 }
 
@@ -686,12 +738,6 @@ static geometry_msgs::msg::PointStamped z_axis_dec(const MovementInput input, ge
 
 
     return new_command;
-}
-
-static void joy_callback(const sensor_msgs::msg::Joy & joy_state)
-{
-    latest_joy_state = joy_state;
-    fresh_joy_state = true;
 }
 
 static geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::PointStamped input_command, float new_mag)
