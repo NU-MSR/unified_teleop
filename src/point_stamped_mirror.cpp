@@ -57,7 +57,7 @@
 using std::string;
 
 static geometry_msgs::msg::PointStamped command, p_cmd, old_p_cmd;
-static sensor_msgs::msg::Joy latest_joy_state;
+static sensor_msgs::msg::Joy latest_joy_state, previous_joy_state;
 static bool fresh_joy_state = false;
 static bool always_enable = false;
 const float rate_of_change = 1.5 * std::pow(10, -5); // USER CAN ADJUST, KEEP IT EXTREMELY SMALL
@@ -282,6 +282,7 @@ using std::placeholders::_1;
 class PointStampedMirrorNode : public rclcpp::Node
 {
     public:
+        bool is_first_joy;
         bool is_joy_freq;
         MovementInput enable_input;
         MovementInput reset_input;
@@ -292,6 +293,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         MovementInput y_dec_input;
         MovementInput z_inc_input;
         MovementInput z_dec_input;
+        std::vector<MovementInput> move_input_vec;
 
         PointStampedMirrorNode() : Node("point_stamped_mirror")
         {
@@ -365,10 +367,14 @@ class PointStampedMirrorNode : public rclcpp::Node
             y_dec_input = function_input(y_dec_assignment, button_map);
             z_inc_input = function_input(z_inc_assignment, button_map);
             z_dec_input = function_input(z_dec_assignment, button_map);
+            // Create a vector containing all the MovementInputs
+            move_input_vec = {enable_input, alt_input, x_inc_input, x_dec_input,
+                                y_inc_input, y_dec_input, z_inc_input, z_dec_input};
 
             //
             // INITIALIZING VARIABLES
             //
+            is_first_joy = true;
             // Ensure upon start up, the robot starts in the center position
             command = zero_command();
             p_cmd = command;
@@ -403,7 +409,7 @@ class PointStampedMirrorNode : public rclcpp::Node
                     RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 1");
                     fresh_joy_state = false;
                 }
-                
+
                 command = zero_command();
 
                 if(control_enabled(enable_input))
@@ -460,13 +466,76 @@ class PointStampedMirrorNode : public rclcpp::Node
         rclcpp::TimerBase::SharedPtr timer_;
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pntstmpd_pub;
 
-        void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state) const
+        void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state)
         {
             RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST JOY");
+            previous_joy_state = latest_joy_state;
             latest_joy_state = *joy_state;
-            fresh_joy_state = true;
+            if (is_first_joy)
+            {
+                is_first_joy = false;
+                previous_joy_state = latest_joy_state;
+            }
+
+            // If not publishing according to joy's frequency, then just publish
+            if (!is_joy_freq)
+            {
+                fresh_joy_state = true;
+            }
+            // But if publishing according to joy's frequency, only if the relevant inputs are changed
+            // AND with control enabled then the node will publish a new output message
+            else
+            {
+                if (is_new_relevant_joy() && control_enabled(enable_input))
+                {
+                    fresh_joy_state = true;
+                }
+                else
+                {
+                    fresh_joy_state = false;
+                }
+            }
         }
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub;
+
+        //
+        // HELPER FUNCTIONS
+        //
+        bool is_new_relevant_joy() const
+        {
+            bool result = false;
+            for (int i = 0; i < static_cast<int>(move_input_vec.size()); i++)
+            {
+                MovementInput input = move_input_vec[i];
+                double old_val, new_val;
+
+                switch (input.type)
+                {
+                    // If None, then assume that no change in joy state
+                    case InputType::None:
+                        old_val = 1.0;
+                        new_val = 1.0;
+                        break;
+                    // If Axis or Trigger, then check the axes array in the joy states
+                    case InputType::Axis:
+                    case InputType::Trigger:
+                        old_val = previous_joy_state.axes.at(input.index);
+                        new_val = latest_joy_state.axes.at(input.index);
+                        break;
+                    // If Button, then check the buttons array in the joy states
+                    case InputType::Button:
+                        old_val = previous_joy_state.buttons.at(input.index);
+                        new_val = latest_joy_state.buttons.at(input.index);
+                        break;
+                }
+
+                if (old_val != new_val)
+                {
+                    result = true;
+                }
+            }
+            return result;
+        }
 };
 
 
