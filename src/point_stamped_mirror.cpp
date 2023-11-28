@@ -56,7 +56,7 @@
 
 using std::string;
 
-static geometry_msgs::msg::PointStamped command, p_cmd, old_p_cmd;
+static geometry_msgs::msg::PointStamped command, p_cmd;
 static sensor_msgs::msg::Joy latest_joy_state, previous_joy_state;
 static bool fresh_joy_state = false;
 static bool always_enable = false;
@@ -92,7 +92,7 @@ enum class InputType
 static const int UNUSED_INDEX = -1;
 static const InputType UNUSED_TYPE = InputType::None;
 
-/// @brief An object representing a particular function's (e.g. move forward, move left) input,
+/// @brief An object representing a particular function's input (e.g. move forward, move left),
 ///        containing said input's index in the received joy message and that input's input type
 class MovementInput
 {
@@ -223,35 +223,35 @@ static geometry_msgs::msg::PointStamped zero_command();
 /// @brief Returns a PointStamped command that has the offset for all of its fields
 static geometry_msgs::msg::PointStamped offset_command();
 
-/// @brief Based on the current/input position, returns coords with an increase in x
-/// @param input - The controller input that will indicate whether the position changes
-/// @param temp_command - The message that will be overwritten with new position coordinates for the robot
-static geometry_msgs::msg::PointStamped x_axis_inc(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+// /// @brief Based on the current/input position, returns coords with an increase in x
+// /// @param input - The controller input that will indicate whether the position changes
+// /// @param temp_command - The message that will be overwritten with new position coordinates for the robot
+// static geometry_msgs::msg::PointStamped x_axis_inc(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
-/// @brief Based on the current/input position, returns coords with an decrease in x
-/// @param input - The controller input that will indicate whether the position changes
-/// @param temp_command - The message that will be overwritten with new position coordinates for the robot
-static geometry_msgs::msg::PointStamped x_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+// /// @brief Based on the current/input position, returns coords with an decrease in x
+// /// @param input - The controller input that will indicate whether the position changes
+// /// @param temp_command - The message that will be overwritten with new position coordinates for the robot
+// static geometry_msgs::msg::PointStamped x_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
-/// @brief Based on the current/input position, returns coords with an increase in y
-/// @param input - The controller input that will indicate whether the position changes
-/// @param temp_command - The message that will be overwritten with new position coordinates for the robot
-static geometry_msgs::msg::PointStamped y_axis_inc(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+// /// @brief Based on the current/input position, returns coords with an increase in y
+// /// @param input - The controller input that will indicate whether the position changes
+// /// @param temp_command - The message that will be overwritten with new position coordinates for the robot
+// static geometry_msgs::msg::PointStamped y_axis_inc(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
-/// @brief Based on the current/input position, returns coords with an decrease in y
-/// @param input - The controller input that will indicate whether the position changes
-/// @param temp_command - The message that will be overwritten with new position coordinates for the robot
-static geometry_msgs::msg::PointStamped y_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+// /// @brief Based on the current/input position, returns coords with an decrease in y
+// /// @param input - The controller input that will indicate whether the position changes
+// /// @param temp_command - The message that will be overwritten with new position coordinates for the robot
+// static geometry_msgs::msg::PointStamped y_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
-/// @brief Based on the current/input position, returns coords with an increase in z
-/// @param input - The controller input that will indicate whether the position changes
-/// @param temp_command - The message that will be overwritten with new position coordinates for the robot
-static geometry_msgs::msg::PointStamped z_axis_inc(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+// /// @brief Based on the current/input position, returns coords with an increase in z
+// /// @param input - The controller input that will indicate whether the position changes
+// /// @param temp_command - The message that will be overwritten with new position coordinates for the robot
+// static geometry_msgs::msg::PointStamped z_axis_inc(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
-/// @brief Based on the current/input position, returns coords with an decrease in z
-/// @param input - The controller input that will indicate whether the position changes
-/// @param temp_command - The message that will be overwritten with new position coordinates for the robot
-static geometry_msgs::msg::PointStamped z_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
+// /// @brief Based on the current/input position, returns coords with an decrease in z
+// /// @param input - The controller input that will indicate whether the position changes
+// /// @param temp_command - The message that will be overwritten with new position coordinates for the robot
+// static geometry_msgs::msg::PointStamped z_axis_dec(MovementInput input, geometry_msgs::msg::PointStamped temp_command);
 
 /// @brief Returns flipped positions depenending on parameters
 /// @param temp_command - The message that will be overwritten with new positions for the robot
@@ -282,8 +282,12 @@ using std::placeholders::_1;
 class PointStampedMirrorNode : public rclcpp::Node
 {
     public:
-        bool is_first_joy;
-        bool is_joy_freq;
+        //
+        // MEMBER VARIABLES
+        //
+        bool is_first_joy; // Whether the received joy_state is the first one
+        bool is_joy_freq; // Whether the node only publishes with every new received joy_state
+        // The various MovementInput objects to be initialized in the constructor
         MovementInput enable_input;
         MovementInput reset_input;
         MovementInput alt_input;
@@ -293,8 +297,18 @@ class PointStampedMirrorNode : public rclcpp::Node
         MovementInput y_dec_input;
         MovementInput z_inc_input;
         MovementInput z_dec_input;
-        std::vector<MovementInput> move_input_vec;
+        std::vector<MovementInput> move_input_vec; // Vector containing all initialized MovementInput objects
 
+        //
+        // NODE DECLARATIONS
+        //
+        rclcpp::TimerBase::SharedPtr timer_;
+        rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pntstmpd_pub;
+        rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub;
+
+        //
+        // CONSTRUCTOR
+        //
         PointStampedMirrorNode() : Node("point_stamped_mirror")
         {
             //
@@ -358,7 +372,7 @@ class PointStampedMirrorNode : public rclcpp::Node
             {
                 button_map[it.first.as<std::string>()] = it.second.as<int>();
             }
-            // Creating MovementInputs from the retrieved input assignments parameters and created button mapping
+            // Initializing MovementInputs from the retrieved input assignments parameters and created button mapping
             enable_input = function_input(enable_assignment, button_map);
             alt_input = function_input(alt_assignment, button_map);
             x_inc_input = function_input(x_inc_assignment, button_map);
@@ -367,7 +381,7 @@ class PointStampedMirrorNode : public rclcpp::Node
             y_dec_input = function_input(y_dec_assignment, button_map);
             z_inc_input = function_input(z_inc_assignment, button_map);
             z_dec_input = function_input(z_dec_assignment, button_map);
-            // Create a vector containing all the MovementInputs
+            // Store all initialized MovementInputs in a vector
             move_input_vec = {enable_input, alt_input, x_inc_input, x_dec_input,
                                 y_inc_input, y_dec_input, z_inc_input, z_dec_input};
 
@@ -378,9 +392,10 @@ class PointStampedMirrorNode : public rclcpp::Node
             // Ensure upon start up, the robot starts in the center position
             command = zero_command();
             p_cmd = command;
-            old_p_cmd = p_cmd;
-            // If frequency set to 0, then only publishes messages when a new joy message is received
-            // but timer will still have a frequency of 100.0
+            // If pub_frequency is set to 0.0, then node only publishes a message when a new joy message
+            // with different input values for any of the MovementInputs is received
+            // (e.g. if the node does not have button r1 mapped, then pressing it will not trigger the publishing of a new message)
+            // With this, the timer will still be set to a frequency of 100.0
             if (pub_frequency == 0.0)
             {
                 is_joy_freq = true;
@@ -393,11 +408,14 @@ class PointStampedMirrorNode : public rclcpp::Node
             fresh_joy_state = false;
 
             //
-            // TIMER CALLBACK
+            // TIMER
             //
             timer_ = this->create_wall_timer(1.0s/pub_frequency, std::bind(&PointStampedMirrorNode::timer_callback, this));
         }
 
+        //
+        // TIMER CALLBACK
+        //
         void timer_callback()
         {
             rclcpp::Time current_time = rclcpp::Clock().now();
@@ -414,15 +432,15 @@ class PointStampedMirrorNode : public rclcpp::Node
 
                 if(control_enabled(enable_input))
                 {
-                    // Reading the raw PointStamped commands
+                    alt_enabled(alt_input); // Adjusting max values according to joy_state
 
-                    alt_enabled(alt_input);
-                    command = z_axis_inc(z_inc_input, command);
-                    command = z_axis_dec(z_dec_input, command);
-                    command = x_axis_inc(x_inc_input, command);
-                    command = x_axis_dec(x_dec_input, command);
-                    command = y_axis_inc(y_inc_input, command);
-                    command = y_axis_dec(y_dec_input, command);
+                    // Modifying output message based on joy_state
+                    command = modify_axis(z_inc_input, command, AxisType::Z_Axis, true);
+                    command = modify_axis(z_dec_input, command, AxisType::Z_Axis, false);
+                    command = modify_axis(x_inc_input, command, AxisType::X_Axis, true);
+                    command = modify_axis(x_dec_input, command, AxisType::X_Axis, false);
+                    command = modify_axis(y_inc_input, command, AxisType::Y_Axis, true);
+                    command = modify_axis(y_dec_input, command, AxisType::Y_Axis, false);
 
                     command = flip_movement(command);
 
@@ -452,8 +470,6 @@ class PointStampedMirrorNode : public rclcpp::Node
                     p_cmd = command;
                 }
 
-                old_p_cmd = p_cmd;
-
                 // Adjust command so that it is offset as desired
                 geometry_msgs::msg::PointStamped offset_cmd = add_pntstmp(p_cmd, offset_command());
                 // Round the values of the message so that it does not sporadically change
@@ -463,27 +479,31 @@ class PointStampedMirrorNode : public rclcpp::Node
                 pntstmpd_pub->publish(offset_cmd);
             }
         }
-        rclcpp::TimerBase::SharedPtr timer_;
-        rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pntstmpd_pub;
 
+        //
+        // SUBSCRIBER CALLBACKS
+        //
         void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state)
         {
             RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST JOY");
             previous_joy_state = latest_joy_state;
             latest_joy_state = *joy_state;
+            // If received joy_state is the first one, then assign same joy_state to previous_joy_state
             if (is_first_joy)
             {
                 is_first_joy = false;
                 previous_joy_state = latest_joy_state;
             }
 
-            // If not publishing according to joy's frequency, then just publish
+            // If not publishing according to joy's frequency,
+            // then every new joy_state is fresh and the node will publish as normal
             if (!is_joy_freq)
             {
                 fresh_joy_state = true;
             }
-            // But if publishing according to joy's frequency, only if the relevant inputs are changed
-            // AND with control enabled then the node will publish a new output message
+            // But if node is specified to publish with each new joy message,
+            // then only if the relevant inputs of joy_state are changed AND with control enabled
+            // will the joy_state be deemed fresh and ready for node to publish a new output message
             else
             {
                 if (is_new_relevant_joy() && control_enabled(enable_input))
@@ -496,10 +516,87 @@ class PointStampedMirrorNode : public rclcpp::Node
                 }
             }
         }
-        rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub;
 
         //
-        // HELPER FUNCTIONS
+        // POINTSTAMPED HELPER FUNCTIONS
+        //
+        /// @brief The specific axis in a PointStamped message that will be modified
+        enum class AxisType
+        {
+            X_Axis,
+            Y_Axis,
+            Z_Axis
+        };
+
+        /// @brief Returns a modified message with a increased or decreased value for a specific axis depending
+        /// on what the user defines in both calling this function and parameters assigned upon startup
+        /// @param input - The controller input that decides how the original message will be modified
+        /// @param orig_message - The message that will be modified with new values
+        /// @param axis_type - The directional axis of the message that will be modified
+        /// @param is_increasing - Whethe the modification will involve increasing or decreasing the value
+        static geometry_msgs::msg::PointStamped modify_axis(const MovementInput input,
+                                                            const geometry_msgs::msg::PointStamped orig_message,
+                                                            const AxisType axis_type,
+                                                            const bool is_increasing)
+        {
+            // Initialize variables
+            geometry_msgs::msg::PointStamped new_message = orig_message;
+            double reading = 0.0f;
+            double max_value = (axis_type == AxisType::X_Axis) ? curr_x_max :
+                                (axis_type == AxisType::Y_Axis) ? curr_y_max :
+                                curr_z_max;
+            
+            // Based on the input type, take in the appropriate readings from the joy_state
+            switch (input.type)
+            {
+                case InputType::None:
+                    break;
+                case InputType::Axis:
+                    reading = latest_joy_state.axes.at(input.index);
+                    break;
+                case InputType::Trigger:
+                    reading = 0.5 - (latest_joy_state.axes.at(input.index)/2.0);
+                    break;
+                case InputType::Button:
+                    reading = latest_joy_state.buttons.at(input.index);
+                    break;
+            }
+
+            // If the input type is Axis, check reading based on whether it's above or below 0.0 and is_increasing
+            // OR if the input type is not Axis, see if the reading is not 0.0
+            if ((input.type == InputType::Axis && ((is_increasing && reading > 0.0f) || (!is_increasing && reading < 0.0f))) ||
+                (input.type != InputType::Axis && reading != 0.0f))
+            {
+                // If the condition is satisfied, calculate the new_value for new_message
+                double new_value = max_value * reading;
+                // If the input type is not Axis AND the value is to be decreased (not increased),
+                // then flip the sign of the new_value
+                if (input.type != InputType::Axis && !is_increasing)
+                {
+                    new_value = -new_value;
+                }
+
+                // Based on axis specified to be modified, modify that aspect of the new PointStamped message
+                switch (axis_type)
+                {
+                    case AxisType::X_Axis:
+                        new_message.point.x = new_value;
+                        break;
+                    case AxisType::Y_Axis:
+                        new_message.point.y = new_value;
+                        break;
+                    case AxisType::Z_Axis:
+                        new_message.point.z = new_value;
+                        break;
+                }
+            }
+
+            return new_message;
+        }
+
+
+        //
+        // JOY HELPER FUNCTIONS
         //
         bool is_new_relevant_joy() const
         {
@@ -645,233 +742,233 @@ static void alt_enabled(MovementInput input)
     }
 }
 
-static geometry_msgs::msg::PointStamped x_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
-{
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+// static geometry_msgs::msg::PointStamped x_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+// {
+//     geometry_msgs::msg::PointStamped new_command = temp_command;
 
-    float axis_reading;
-    float trigger_reading;
-    float button_reading;
+//     float axis_reading;
+//     float trigger_reading;
+//     float button_reading;
 
-    switch (input.type)
-    {
-        case InputType::None:
-            break;
-        case InputType::Axis:
-            axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
-            if (axis_reading != 0.0f)
-            {
-                new_command.point.x = curr_x_max * axis_reading;
-            }
-            break;
-        case InputType::Trigger:
-            trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
-            if (trigger_reading != 0.0f)
-            {
-                new_command.point.x = curr_x_max * trigger_reading;
-            }
-            break;
-        case InputType::Button:
-            button_reading = latest_joy_state.buttons.at(input.index);
-            if (button_reading != 0.0f)
-            {
-                new_command.point.x = curr_x_max * button_reading;
-            }
-            break;
-    }
+//     switch (input.type)
+//     {
+//         case InputType::None:
+//             break;
+//         case InputType::Axis:
+//             axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+//             if (axis_reading != 0.0f)
+//             {
+//                 new_command.point.x = curr_x_max * axis_reading;
+//             }
+//             break;
+//         case InputType::Trigger:
+//             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+//             if (trigger_reading != 0.0f)
+//             {
+//                 new_command.point.x = curr_x_max * trigger_reading;
+//             }
+//             break;
+//         case InputType::Button:
+//             button_reading = latest_joy_state.buttons.at(input.index);
+//             if (button_reading != 0.0f)
+//             {
+//                 new_command.point.x = curr_x_max * button_reading;
+//             }
+//             break;
+//     }
 
-    return new_command;
-}
+//     return new_command;
+// }
 
-static geometry_msgs::msg::PointStamped x_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
-{
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+// static geometry_msgs::msg::PointStamped x_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+// {
+//     geometry_msgs::msg::PointStamped new_command = temp_command;
 
-    float axis_reading;
-    float trigger_reading;
-    float button_reading;
+//     float axis_reading;
+//     float trigger_reading;
+//     float button_reading;
 
-    switch (input.type)
-    {
-        case InputType::None:
-            break;
-        case InputType::Axis:
-            axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
-            if (axis_reading != 0.0f)
-            {
-                new_command.point.x = curr_x_max * axis_reading;
-            }
-            break;
-        case InputType::Trigger:
-            trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
-            if (trigger_reading != 0.0f)
-            {
-                new_command.point.x = -1 * curr_x_max * trigger_reading;
-            }
-            break;
-        case InputType::Button:
-            button_reading = latest_joy_state.buttons.at(input.index);
-            if (button_reading != 0.0f)
-            {
-                new_command.point.x = -1 * curr_x_max * button_reading;
-            }
-            break;
-    }
+//     switch (input.type)
+//     {
+//         case InputType::None:
+//             break;
+//         case InputType::Axis:
+//             axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
+//             if (axis_reading != 0.0f)
+//             {
+//                 new_command.point.x = curr_x_max * axis_reading;
+//             }
+//             break;
+//         case InputType::Trigger:
+//             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+//             if (trigger_reading != 0.0f)
+//             {
+//                 new_command.point.x = -1 * curr_x_max * trigger_reading;
+//             }
+//             break;
+//         case InputType::Button:
+//             button_reading = latest_joy_state.buttons.at(input.index);
+//             if (button_reading != 0.0f)
+//             {
+//                 new_command.point.x = -1 * curr_x_max * button_reading;
+//             }
+//             break;
+//     }
 
-    return new_command;
-}
+//     return new_command;
+// }
 
-static geometry_msgs::msg::PointStamped y_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
-{
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+// static geometry_msgs::msg::PointStamped y_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+// {
+//     geometry_msgs::msg::PointStamped new_command = temp_command;
 
-    float axis_reading;
-    float trigger_reading;
-    float button_reading;
+//     float axis_reading;
+//     float trigger_reading;
+//     float button_reading;
 
-    switch (input.type)
-    {
-        case InputType::None:
-            break;
-        case InputType::Axis:
-            axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
-            if (axis_reading != 0.0f)
-            {
-                new_command.point.y = curr_y_max * axis_reading;
-            }
-            break;
-        case InputType::Trigger:
-            trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
-            if (trigger_reading != 0.0f)
-            {
-                new_command.point.y = curr_y_max * trigger_reading;
-            }
-            break;
-        case InputType::Button:
-            button_reading = latest_joy_state.buttons.at(input.index);
-            if (button_reading != 0.0f)
-            {
-                new_command.point.y = curr_y_max * button_reading;
-            }
-            break;
-    }
+//     switch (input.type)
+//     {
+//         case InputType::None:
+//             break;
+//         case InputType::Axis:
+//             axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+//             if (axis_reading != 0.0f)
+//             {
+//                 new_command.point.y = curr_y_max * axis_reading;
+//             }
+//             break;
+//         case InputType::Trigger:
+//             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+//             if (trigger_reading != 0.0f)
+//             {
+//                 new_command.point.y = curr_y_max * trigger_reading;
+//             }
+//             break;
+//         case InputType::Button:
+//             button_reading = latest_joy_state.buttons.at(input.index);
+//             if (button_reading != 0.0f)
+//             {
+//                 new_command.point.y = curr_y_max * button_reading;
+//             }
+//             break;
+//     }
 
-    return new_command;
-}
+//     return new_command;
+// }
 
-static geometry_msgs::msg::PointStamped y_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
-{
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+// static geometry_msgs::msg::PointStamped y_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+// {
+//     geometry_msgs::msg::PointStamped new_command = temp_command;
 
-    float axis_reading;
-    float trigger_reading;
-    float button_reading;
+//     float axis_reading;
+//     float trigger_reading;
+//     float button_reading;
 
-    switch (input.type)
-    {
-        case InputType::None:
-            break;
-        case InputType::Axis:
-            axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
-            if (axis_reading != 0.0f)
-            {
-                new_command.point.y = curr_y_max * axis_reading;
-            }
-            break;
-        case InputType::Trigger:
-            trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
-            if (trigger_reading != 0.0f)
-            {
-                new_command.point.y = -1 * curr_y_max * trigger_reading;
-            }
-            break;
-        case InputType::Button:
-            button_reading = latest_joy_state.buttons.at(input.index);
-            if (button_reading != 0.0f)
-            {
-                new_command.point.y = -1 * curr_y_max * button_reading;
-            }
-            break;
-    }
+//     switch (input.type)
+//     {
+//         case InputType::None:
+//             break;
+//         case InputType::Axis:
+//             axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
+//             if (axis_reading != 0.0f)
+//             {
+//                 new_command.point.y = curr_y_max * axis_reading;
+//             }
+//             break;
+//         case InputType::Trigger:
+//             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+//             if (trigger_reading != 0.0f)
+//             {
+//                 new_command.point.y = -1 * curr_y_max * trigger_reading;
+//             }
+//             break;
+//         case InputType::Button:
+//             button_reading = latest_joy_state.buttons.at(input.index);
+//             if (button_reading != 0.0f)
+//             {
+//                 new_command.point.y = -1 * curr_y_max * button_reading;
+//             }
+//             break;
+//     }
 
-    return new_command;
-}
+//     return new_command;
+// }
 
-static geometry_msgs::msg::PointStamped z_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
-{
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+// static geometry_msgs::msg::PointStamped z_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+// {
+//     geometry_msgs::msg::PointStamped new_command = temp_command;
 
-    float axis_reading;
-    float trigger_reading;
-    float button_reading;
+//     float axis_reading;
+//     float trigger_reading;
+//     float button_reading;
 
-    switch (input.type)
-    {
-        case InputType::None:
-            break;
-        case InputType::Axis:
-            axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
-            if (axis_reading != 0.0f)
-            {
-                new_command.point.z = curr_z_max * axis_reading;
-            }
-            break;
-        case InputType::Trigger:
-            trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
-            if (trigger_reading != 0.0f)
-            {
-                new_command.point.z = curr_z_max * trigger_reading;
-            }
-            break;
-        case InputType::Button:
-            button_reading = latest_joy_state.buttons.at(input.index);
-            if (button_reading != 0.0f)
-            {
-                new_command.point.z = curr_z_max * button_reading;
-            }
-            break;
-    }
+//     switch (input.type)
+//     {
+//         case InputType::None:
+//             break;
+//         case InputType::Axis:
+//             axis_reading = (latest_joy_state.axes.at(input.index) > 0 ? latest_joy_state.axes.at(input.index) : 0);
+//             if (axis_reading != 0.0f)
+//             {
+//                 new_command.point.z = curr_z_max * axis_reading;
+//             }
+//             break;
+//         case InputType::Trigger:
+//             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+//             if (trigger_reading != 0.0f)
+//             {
+//                 new_command.point.z = curr_z_max * trigger_reading;
+//             }
+//             break;
+//         case InputType::Button:
+//             button_reading = latest_joy_state.buttons.at(input.index);
+//             if (button_reading != 0.0f)
+//             {
+//                 new_command.point.z = curr_z_max * button_reading;
+//             }
+//             break;
+//     }
 
-    return new_command;
-}
+//     return new_command;
+// }
 
-static geometry_msgs::msg::PointStamped z_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
-{
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+// static geometry_msgs::msg::PointStamped z_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
+// {
+//     geometry_msgs::msg::PointStamped new_command = temp_command;
 
-    float axis_reading;
-    float trigger_reading;
-    float button_reading;
+//     float axis_reading;
+//     float trigger_reading;
+//     float button_reading;
 
-    switch (input.type)
-    {
-        case InputType::None:
-            break;
-        case InputType::Axis:
-            axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
-            if (axis_reading != 0.0f)
-            {
-                new_command.point.z = curr_z_max * axis_reading;
-            }
-            break;
-        case InputType::Trigger:
-            trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
-            if (trigger_reading != 0.0f)
-            {
-                new_command.point.z = -1 * curr_z_max * trigger_reading;
-            }
-            break;
-        case InputType::Button:
-            button_reading = latest_joy_state.buttons.at(input.index);
-            if (button_reading != 0.0f)
-            {
-                new_command.point.z = -1 * curr_z_max * button_reading;
-            }
-            break;
-    }
+//     switch (input.type)
+//     {
+//         case InputType::None:
+//             break;
+//         case InputType::Axis:
+//             axis_reading = (latest_joy_state.axes.at(input.index) < 0 ? latest_joy_state.axes.at(input.index) : 0);
+//             if (axis_reading != 0.0f)
+//             {
+//                 new_command.point.z = curr_z_max * axis_reading;
+//             }
+//             break;
+//         case InputType::Trigger:
+//             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
+//             if (trigger_reading != 0.0f)
+//             {
+//                 new_command.point.z = -1 * curr_z_max * trigger_reading;
+//             }
+//             break;
+//         case InputType::Button:
+//             button_reading = latest_joy_state.buttons.at(input.index);
+//             if (button_reading != 0.0f)
+//             {
+//                 new_command.point.z = -1 * curr_z_max * button_reading;
+//             }
+//             break;
+//     }
 
-    return new_command;
-}
+//     return new_command;
+// }
 
 static geometry_msgs::msg::PointStamped flip_movement(geometry_msgs::msg::PointStamped temp_command)
 {
