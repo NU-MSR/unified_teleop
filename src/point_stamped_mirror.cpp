@@ -42,6 +42,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
+#include "param_helpers.hpp"
 
 #include <string>
 #include <cmath>
@@ -109,91 +110,6 @@ class MovementInput
         /// @param input_type The type of input.
         MovementInput(int index_no, InputType input_type) : index(index_no), type(input_type) {}
 };
-
-/// Additional parameter helper functions developed my NU MSR
-namespace rosnu
-{
-  /// @brief declare a parameter without a default value. If the value is not set externally,
-  /// an exception will be thrown when trying to get_param for this parameter.
-  /// @tparam T - type of the parameter
-  /// @param name - name of the parameter
-  /// @param node - node for which the parameter is declared
-  /// @param desc - (optional) the parameter description
-  /// @throw 
-  ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
-  ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
-  template<class T>
-  void declare_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
-  {
-    // init descriptor object and fill in description
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = desc;
-
-    // declare parameter without a default value
-    node.declare_parameter<T>(name, descriptor);
-  }
-
-  /// @brief declare a parameter with a default value.
-  /// @tparam T - type of the parameter
-  /// @param name - name of the parameter
-  /// @param def - the default parameter value
-  /// @param node - node for which the parameter is declared
-  /// @param desc - (optional) the parameter description
-  /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
-  template<class T>
-  void declare_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
-  {
-    // init descriptor object and fill in description
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = desc;
-    
-    // declare node with default value
-    node.declare_parameter<T>(name, def, descriptor);
-  }
-
-  /// @brief get the value of a parameter.
-  /// @tparam T - type of the parameter
-  /// @param name - name of the parameter
-  /// @param node - node for which the parameter was declared
-  /// @return value of the parameter
-  /// @throw rclcpp::exceptions::ParameterNotDeclaredException if the parameter has not been declared
-  template<class T>
-  T get_param(const std::string & name, rclcpp::Node & node)
-  {
-    return node.get_parameter(name).get_parameter_value().get<T>();
-  }
-  
-  /// @brief declare a parameter without a default value and return the parameter value.
-  /// @tparam T - type of the parameter
-  /// @param name - name of the parameter
-  /// @param node - node for which the parameter is declared
-  /// @param desc - (optional) the parameter description
-  /// @return value of the parameter
-  /// @throw 
-  ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
-  ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
-  template<class T>
-  T declare_and_get_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
-  {
-    declare_param<T>(name, node, desc);
-    return get_param<T>(name, node);
-  }
-
-  /// @brief declare a parameter with a default value and return the parameter value.
-  /// @tparam T - type of the parameter
-  /// @param name - name of the parameter
-  /// @param def - the default parameter value
-  /// @param node - node for which the parameter is declared
-  /// @param desc - (optional) the parameter description
-  /// @return value of the parameter
-  /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
-  template<class T>
-  T declare_and_get_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
-  {
-    declare_param<T>(name, def, node, desc);
-    return get_param<T>(name, node);
-  }
-}
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -345,11 +261,9 @@ class PointStampedMirrorNode : public rclcpp::Node
             {
                 if (is_joy_freq)
                 {
-                    RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 1");
+                    // RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 1");
                     fresh_joy_state = false;
                 }
-
-                command = zero_command();
 
                 if(control_enabled(enable_input))
                 {
@@ -408,7 +322,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @param joy_state - The state of the inputs of the controller
         void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state)
         {
-            RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST JOY");
+            // RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST JOY");
             previous_joy_state = latest_joy_state;
             latest_joy_state = *joy_state;
             // If received joy_state is the first one, then assign same joy_state to previous_joy_state
