@@ -57,29 +57,11 @@
 
 using std::string;
 
-static geometry_msgs::msg::PointStamped command, p_cmd;
-static sensor_msgs::msg::Joy latest_joy_state, previous_joy_state;
-static bool fresh_joy_state = false;
-static bool always_enable = false;
+geometry_msgs::msg::PointStamped command, p_cmd;
+sensor_msgs::msg::Joy latest_joy_state, previous_joy_state;
+bool fresh_joy_state = false;
+bool always_enable = false;
 const float rate_of_change = 1.5 * std::pow(10, -5); // USER CAN ADJUST, KEEP IT EXTREMELY SMALL
-
-float curr_x_max = 1.0;
-float curr_y_max = 1.0;
-float curr_z_max = 1.0;
-static float x_max;
-static float y_max;
-static float z_max;
-static float alt_x_max;
-static float alt_y_max;
-static float alt_z_max;
-static float boundary_radius;
-static float lin_rate_chg_fac;
-static float x_offset;
-static float y_offset;
-static float z_offset;
-static bool x_flip;
-static bool y_flip;
-static bool z_flip;
 
 /// @brief The input type of an input (Axis, Trigger, Button, None)
 enum class InputType
@@ -90,8 +72,8 @@ enum class InputType
     None
 };
 
-static const int UNUSED_INDEX = -1;
-static const InputType UNUSED_TYPE = InputType::None;
+const int UNUSED_INDEX = -1;
+const InputType UNUSED_TYPE = InputType::None;
 
 /// @brief An object representing a particular function's input (e.g. move forward, move left),
 ///        containing said input's index in the received joy message and that input's input type
@@ -198,8 +180,12 @@ class PointStampedMirrorNode : public rclcpp::Node
 
             //
             // INITIALIZING VARIABLES
-            //
+            //  
             is_first_joy = true;
+            //
+            curr_x_max = 1.0;
+            curr_y_max = 1.0;
+            curr_z_max = 1.0;
             // Ensure upon start up, the robot starts in the center position
             command = zero_command();
             p_cmd = command;
@@ -228,8 +214,26 @@ class PointStampedMirrorNode : public rclcpp::Node
         //
         // MEMBER VARIABLE DECLARATIONS
         //
+        // For node parameters
         bool is_first_joy; // Whether the received joy_state is the first one
         bool is_joy_freq; // Whether the node only publishes with every new received joy_state
+        float curr_x_max;
+        float curr_y_max;
+        float curr_z_max;
+        float x_max;
+        float y_max;
+        float z_max;
+        float alt_x_max;
+        float alt_y_max;
+        float alt_z_max;
+        float boundary_radius;
+        float lin_rate_chg_fac;
+        float x_offset;
+        float y_offset;
+        float z_offset;
+        bool x_flip;
+        bool y_flip;
+        bool z_flip;
         // The various MovementInput objects to be initialized in the constructor
         MovementInput enable_input;
         MovementInput reset_input;
@@ -257,17 +261,19 @@ class PointStampedMirrorNode : public rclcpp::Node
         {
             rclcpp::Time current_time = rclcpp::Clock().now();
 
+            
+            //
+            // READING RAW COMMAND
+            //
+            // If a fresh_joy_state has arrived, the raw command will be adjusted
             if(fresh_joy_state)
             {
-                if (is_joy_freq)
-                {
-                    // RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 1");
-                    fresh_joy_state = false;
-                }
-
+                // If the node has control enabled, derive the desired command from the inputs
                 if(control_enabled(enable_input))
                 {
-                    alt_enabled(alt_input); // Adjusting max values according to joy_state
+                    command = zero_command();
+                    
+                    alt_enabled(alt_input); // Adjusting max values according to parameters
 
                     // Modifying output message based on joy_state
                     command = modify_axis(z_inc_input, command, AxisType::Z_Axis, true);
@@ -277,42 +283,67 @@ class PointStampedMirrorNode : public rclcpp::Node
                     command = modify_axis(y_inc_input, command, AxisType::Y_Axis, true);
                     command = modify_axis(y_dec_input, command, AxisType::Y_Axis, false);
 
-                    command = flip_movement(command);
-
-                    // Implementing rate of change modifier
-                    // Get the diff between curr and new
-                    geometry_msgs::msg::PointStamped diff_pntstmp = subtract_pntstmp(command, p_cmd);
-                    // Adjust the diff so that it's within the set rate_of_change
-                    geometry_msgs::msg::PointStamped adjusted_diff = normalize_pntstmp(diff_pntstmp, rate_of_change * lin_rate_chg_fac);
-                    // Increment it on the new processed command
-                    p_cmd = add_pntstmp(p_cmd, adjusted_diff);
-
-                    // Implementing spherical positional boundary modifier
-                    // Make sure the robot's position is constrained to the desired spherical space
-                    if (boundary_radius != 0.0)
-                    {
-                        // Find the robot's desired distance from home sqrd
-                        float distance_from_home_sqrd = pow(p_cmd.point.x, 2) + pow(p_cmd.point.y, 2) + pow(p_cmd.point.z, 2);
-                        // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
-                        if (distance_from_home_sqrd > pow(boundary_radius, 2))
-                        {
-                            p_cmd = normalize_pntstmp(p_cmd, boundary_radius);
-                        }
-                    }
+                    command = flip_movement(command); // Adjusting raw command based on parameters
                 }
+                // If control is not enabled, then raw command is set to the zero position  
                 else
                 {
-                    p_cmd = command;
+                    command = zero_command();
                 }
+            }
 
-                // Adjust command so that it is offset as desired
-                geometry_msgs::msg::PointStamped offset_cmd = add_pntstmp(p_cmd, offset_command());
-                // Round the values of the message so that it does not sporadically change
-                offset_cmd = round_pntstmp(offset_cmd);
+            //
+            // APPLYING MODIFIERS
+            //
+            // Modifiers will always be applied to raw commands
+            // Implementing rate of change modifier
+            // Get the diff between curr and new
+            geometry_msgs::msg::PointStamped diff_pntstmp = subtract_pntstmp(command, p_cmd);
+            // Adjust the diff so that it's within the set rate_of_change
+            geometry_msgs::msg::PointStamped adjusted_diff = normalize_pntstmp(diff_pntstmp, rate_of_change * lin_rate_chg_fac);
+            // Increment it on the new processed command
+            p_cmd = add_pntstmp(p_cmd, adjusted_diff);
 
+            // Implementing spherical positional boundary modifier
+            // Make sure the robot's position is constrained to the desired spherical space
+            if (boundary_radius != 0.0)
+            {
+                // Find the robot's desired distance from home sqrd
+                float distance_from_home_sqrd = pow(p_cmd.point.x, 2) + pow(p_cmd.point.y, 2) + pow(p_cmd.point.z, 2);
+                // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
+                if (distance_from_home_sqrd > pow(boundary_radius, 2))
+                {
+                    p_cmd = normalize_pntstmp(p_cmd, boundary_radius);
+                }
+            }
+
+            // Adjust command so that it is offset as desired
+            geometry_msgs::msg::PointStamped offset_cmd = add_pntstmp(p_cmd, offset_command());
+            // Round the values of the message so that it does not sporadically change
+            offset_cmd = round_pntstmp(offset_cmd);
+            
+            //
+            // PUBLISHING MODIFIED COMMAND
+            //
+            // Node will always publish if the frequency is not is_joy_freq
+            if (!is_joy_freq)
+            {
                 offset_cmd.header.stamp = current_time;
                 pntstmpd_pub->publish(offset_cmd);
             }
+            // But if publishing frequency is set to is_joy_freq, then it only publishes
+            // when a fresh_joy_state has been received
+            else
+            {
+                if (fresh_joy_state)
+                {
+                    offset_cmd.header.stamp = current_time;
+                    pntstmpd_pub->publish(offset_cmd);
+                    fresh_joy_state = false; // Need to wait for the next fresh_joy_state to publish the next command
+                }
+            }
+
+
         }
 
         //
@@ -397,7 +428,7 @@ class PointStampedMirrorNode : public rclcpp::Node
 
         /// @brief Returns true if control inputs are enabled based on controller input (or if always_enable is trueSS)
         /// @param input - The controller input that will enable this function
-        static bool control_enabled(const MovementInput input)
+        bool control_enabled(const MovementInput input)
         {
             
             if (always_enable)
@@ -425,7 +456,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @param orig_message - The message that will be modified with new values
         /// @param axis_type - The directional axis of the message that will be modified
         /// @param is_increasing - Whethe the modification will involve increasing or decreasing the value
-        static geometry_msgs::msg::PointStamped modify_axis(const MovementInput input,
+        geometry_msgs::msg::PointStamped modify_axis(const MovementInput input,
                                                             const geometry_msgs::msg::PointStamped orig_message,
                                                             const AxisType axis_type,
                                                             const bool is_increasing)
@@ -486,7 +517,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         }
 
         /// @brief Returns a PointStamped command that has zero for all of its fields
-        static geometry_msgs::msg::PointStamped zero_command()
+        geometry_msgs::msg::PointStamped zero_command()
         {
             geometry_msgs::msg::PointStamped new_command;
 
@@ -502,7 +533,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         //
         /// @brief Adjusts max values to defined alternative values based on controller input
         /// @param input - The controller input that will enable this function
-        static void alt_enabled(MovementInput input)
+        void alt_enabled(MovementInput input)
         {
             if (input.type == InputType::None)
             {
@@ -528,7 +559,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         }
 
         /// @brief Returns a PointStamped command that has the offset values applied to all of its fields
-        static geometry_msgs::msg::PointStamped offset_command()
+        geometry_msgs::msg::PointStamped offset_command()
         {
             geometry_msgs::msg::PointStamped new_command;
 
@@ -541,7 +572,7 @@ class PointStampedMirrorNode : public rclcpp::Node
 
         /// @brief Returns flipped positions depenending on parameters
         /// @param temp_command - The message that will be modified with flipped sign values
-        static geometry_msgs::msg::PointStamped flip_movement(geometry_msgs::msg::PointStamped temp_command)
+        geometry_msgs::msg::PointStamped flip_movement(geometry_msgs::msg::PointStamped temp_command)
         {
             temp_command.point.x *= pow(-1, x_flip);
             temp_command.point.y *= pow(-1, y_flip);
@@ -553,7 +584,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @brief Returns a PointStamped message that reflects the difference between two given PointStamped messages
         /// @param subtracted - The PointStamped message that will be subtracted
         /// @param subtractor - The PointStamped message that will be subtracting from the subtracted
-        static geometry_msgs::msg::PointStamped subtract_pntstmp(geometry_msgs::msg::PointStamped subtracted, geometry_msgs::msg::PointStamped subtractor)
+        geometry_msgs::msg::PointStamped subtract_pntstmp(geometry_msgs::msg::PointStamped subtracted, geometry_msgs::msg::PointStamped subtractor)
         {
             geometry_msgs::msg::PointStamped new_command;
             new_command.point.x = subtracted.point.x - subtractor.point.x;
@@ -565,7 +596,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @brief Returns a PointStamped message that normalizes the values to a given magnitude
         /// @param input_command - The PointStamped message that will be normalized
         /// @param new_mag - The desired magnitude for the resulting PointStamped message
-        static geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::PointStamped input_command, float new_mag)
+        geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::PointStamped input_command, float new_mag)
         {
             geometry_msgs::msg::PointStamped norm_command = input_command;
             float magnitude = sqrt(input_command.point.x * input_command.point.x + input_command.point.y * input_command.point.y + input_command.point.z * input_command.point.z);
@@ -589,7 +620,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @brief Returns a PointStamped message that reflects the sum between two given PointStamped messages
         /// @param subtracted - First part of PointStamped addition
         /// @param subtractor - Second part of the PointStamped addition
-        static geometry_msgs::msg::PointStamped add_pntstmp(geometry_msgs::msg::PointStamped add1, geometry_msgs::msg::PointStamped add2)
+        geometry_msgs::msg::PointStamped add_pntstmp(geometry_msgs::msg::PointStamped add1, geometry_msgs::msg::PointStamped add2)
         {
             geometry_msgs::msg::PointStamped new_command;
             new_command.point.x = add1.point.x + add2.point.x;
@@ -600,7 +631,7 @@ class PointStampedMirrorNode : public rclcpp::Node
 
         /// @brief Returns a PointStamped message that with rounded values to a certain decimal point
         /// @param input_command - The PointStamped message that will be rounded
-        static geometry_msgs::msg::PointStamped round_pntstmp(geometry_msgs::msg::PointStamped input_command)
+        geometry_msgs::msg::PointStamped round_pntstmp(geometry_msgs::msg::PointStamped input_command)
         {
             geometry_msgs::msg::PointStamped new_command;
             int precision = 3;
@@ -616,7 +647,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @brief Returns the type of the input based on its name
         /// (Axis if it begins with an 'a', Trigger if it begins with a 't', Button if it begins with a 'b', and None if the string is empty)
         /// @param input_name - The name of the controller input
-        static InputType input_type(const std::string input_name)
+        InputType input_type(const std::string input_name)
         {
             if (input_name.empty())
             {
@@ -646,7 +677,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @brief Returns a MovementInput object for an input assignment by referencing to an input map
         /// @param input_assignment - The name of the input that is used for that function
         /// @param map - The input mapping based on the input scheme from the device config file
-        static MovementInput function_input(std::string input_assignment, std::map<std::string, int> map)
+        MovementInput function_input(std::string input_assignment, std::map<std::string, int> map)
         {
             if (input_assignment != "UNUSED")
             {
