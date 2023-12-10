@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>unified_teleop</name>
+  <version>0.0.1</version>
+  <description>Package that allows a robot to interface with any controller input device</description>
+
+  <maintainer email="elwin@northwestern.edu">Matthew Elwin</maintainer>
+
+  <license>GPLv3</license>
+
+
+  <url type="repository">https://github.com/dkoh555/numsr_contoller_interface</url>
+
+  <author email="damienkoh2025@u.northwestern.edu">Damien Koh</author>
+  <author email="elwin@northwestern.edu">Matthew Elwin</author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <build_depend>cmakeme</build_depend>
+
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
+
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_srvs</depend>
+
+  <depend>catch_ros2</depend>
+
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

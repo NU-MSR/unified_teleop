@@ -1,0 +1,68 @@
+/**:
+  joy_node:
+    ros__parameters:
+      device_id: 0
+      deadzone: 0.1
+      autorepeat_rate: 20.0
+
+  twist_mirror_node:
+    ros__parameters:
+      x_axis_inc: "axis_left_stick_y"
+      x_axis_dec: "axis_left_stick_y"
+      y_axis_inc: "axis_directional_buttons_x"
+      y_axis_dec: "axis_directional_buttons_x"
+      yaw_inc: "axis_left_stick_x"
+      yaw_dec: "axis_left_stick_x"
+
+      enable_control: "button_r1"
+      alt_enable: "button_l1"
+
+  point_stamped_mirror_node:
+    ros__parameters:
+      x_axis_inc: "axis_right_stick_y"
+      x_axis_dec: "axis_right_stick_y"
+      y_axis_inc: "axis_right_stick_x"
+      y_axis_dec: "axis_right_stick_x"
+      z_axis_inc: "trigger_r2"
+      z_axis_dec: "trigger_l2"
+
+      enable_control: "button_r1"
+      alt_enable: "button_l1"
+
+      # x_max: 0.3
+      # y_max: 0.3
+      # z_max: 0.3
+      # alt_x_max: 0.15
+      # alt_y_max: 0.15
+      # alt_z_max: 0.15
+
+      # reset_enable: "button_cross"
+
+      # lin_rate_chg_fac: 2.0
+      # boundary_radius: 0.13
+      # z_offset: 0.355
+
+  point_stamped_incr_node:
+    ros__parameters:
+      x_axis_inc: "axis_right_stick_y"
+      x_axis_dec: "axis_right_stick_y"
+      y_axis_inc: "axis_right_stick_x"
+      y_axis_dec: "axis_right_stick_x"
+      z_axis_inc: "trigger_r2"
+      z_axis_dec: "trigger_l2"
+
+      enable_control: "button_r1"
+      alt_enable: "button_l1"
+
+      # x_max: 0.3
+      # y_max: 0.3
+      # z_max: 0.3
+      # alt_x_max: 0.15
+      # alt_y_max: 0.15
+      # alt_z_max: 0.15
+
+      # reset_enable: "button_cross"
+
+      # lin_rate_chg_fac: 2.0
+      # boundary_radius: 0.13
+      # z_offset: 0.355
