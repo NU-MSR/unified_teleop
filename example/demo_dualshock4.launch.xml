@@ -1,7 +1,7 @@
 <launch>
     <!-- run the joy node for the dualshock 4 -->
     <node name="joy_node" pkg="joy" exec="joy_node">
-        <param from="$(find-pkg-share unified_teleop)/config/example_scheme.yaml" />
+        <param from="$(find-pkg-share unified_teleop)/example/example_scheme.yaml" />
     </node>
 
     <!-- run the twist_mirror node -->
