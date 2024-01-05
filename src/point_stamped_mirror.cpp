@@ -66,10 +66,18 @@ const float rate_of_change = 1.5 * std::pow(10, -5); // USER CAN ADJUST, KEEP IT
 /// @brief The input type of an input (Axis, Trigger, Button, None)
 enum class InputType
 {
-    Axis,
-    Trigger,
-    Button,
-    None
+    Axis,       // Inputs that are reflected in the axes array of the joy message, 
+                // usually reflect joysticks or directional numbers on a game controller,
+                // their default value is 0.0.
+                
+    Trigger,    // Inputs that are reflected in the axes array of the joy message,
+                // usually reflect the triggers on a game controller,
+                // their default value is 1.0, and when fully pressed becomes -1.0.
+
+    Button,     // Inputs that are reflected in the button array of the joy message,
+                // usually reflect any and all buttons that give a 0 or 1 input.
+
+    None        // An invalid or missing input.
 };
 
 const int UNUSED_INDEX = -1;
@@ -77,20 +85,10 @@ const InputType UNUSED_TYPE = InputType::None;
 
 /// @brief An object representing a particular function's input (e.g. move forward, move left),
 ///        containing said input's index in the received joy message and that input's input type
-class MovementInput
+struct MovementInput
 {
-    public:
-        /// @brief Index number that correlates with its position in the joy message array
-        int index;
-        /// @brief InputType that indicates the type of input it is (Axis, Trigger, Button, None)
-        InputType type;
-
-        /// @brief Default constructor. Initializes index to UNUSED_INDEX and type to InputType::None
-        MovementInput() : index(UNUSED_INDEX), type(InputType::None) {}
-        /// @brief Constructor with provided index and type parameters.
-        /// @param index_no The index of the joy message array.
-        /// @param input_type The type of input.
-        MovementInput(int index_no, InputType input_type) : index(index_no), type(input_type) {}
+    int index = UNUSED_INDEX; // Index number that correlates with its position in the joy message array
+    InputType type = UNUSED_TYPE; // InputType that indicates the type of input it is (Axis, Trigger, Button, None)
 };
 
 using namespace std::chrono_literals;
@@ -679,14 +677,19 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @param map - The input mapping based on the input scheme from the device config file
         MovementInput function_input(std::string input_assignment, std::map<std::string, int> map)
         {
+            MovementInput result_input;
+            
             if (input_assignment != "UNUSED")
             {
                 int index = map[input_assignment];
-                return MovementInput(index, input_type(input_assignment));
+                result_input.index = index;
+                result_input.type = input_type(input_assignment);
+
+                return result_input;
             }
             else
             {
-                return MovementInput();
+                return result_input;
             }
         }
 };
