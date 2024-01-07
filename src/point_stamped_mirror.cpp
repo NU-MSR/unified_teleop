@@ -55,6 +55,9 @@
 #include <functional>
 #include <memory>
 
+#include <optional>
+#include <map>
+
 using std::string;
 
 geometry_msgs::msg::PointStamped command, p_cmd;
@@ -80,15 +83,12 @@ enum class InputType
     None        // An invalid or missing input.
 };
 
-const int UNUSED_INDEX = -1;
-const InputType UNUSED_TYPE = InputType::None;
-
 /// @brief An object representing a particular function's input (e.g. move forward, move left),
 ///        containing said input's index in the received joy message and that input's input type
 struct MovementInput
 {
-    int index = UNUSED_INDEX; // Index number that correlates with its position in the joy message array
-    InputType type = UNUSED_TYPE; // InputType that indicates the type of input it is (Axis, Trigger, Button, None)
+    int index; // Index number that correlates with its position in the joy message array
+    InputType type; // InputType that indicates the type of input it is (Axis, Trigger, Button, None)
 };
 
 using namespace std::chrono_literals;
@@ -233,16 +233,16 @@ class PointStampedMirrorNode : public rclcpp::Node
         bool y_flip;
         bool z_flip;
         // The various MovementInput objects to be initialized in the constructor
-        MovementInput enable_input;
-        MovementInput reset_input;
-        MovementInput alt_input;
-        MovementInput x_inc_input;
-        MovementInput x_dec_input;
-        MovementInput y_inc_input;
-        MovementInput y_dec_input;
-        MovementInput z_inc_input;
-        MovementInput z_dec_input;
-        std::vector<MovementInput> move_input_vec; // Vector containing all initialized MovementInput objects
+        std::optional<MovementInput> enable_input;
+        std::optional<MovementInput> reset_input;
+        std::optional<MovementInput> alt_input;
+        std::optional<MovementInput> x_inc_input;
+        std::optional<MovementInput> x_dec_input;
+        std::optional<MovementInput> y_inc_input;
+        std::optional<MovementInput> y_dec_input;
+        std::optional<MovementInput> z_inc_input;
+        std::optional<MovementInput> z_dec_input;
+        std::vector<std::optional<MovementInput>> move_input_vec; // Vector containing all initialized MovementInput objects
 
         //
         // NODE DECLARATIONS
@@ -393,10 +393,16 @@ class PointStampedMirrorNode : public rclcpp::Node
             bool result = false;
             for (int i = 0; i < static_cast<int>(move_input_vec.size()); i++)
             {
-                MovementInput input = move_input_vec[i];
+                std::optional<MovementInput> input = move_input_vec[i];
                 double old_val, new_val;
 
-                switch (input.type)
+                // If the input is null, do not check it and continue to the next iteration
+                if (!input)
+                {
+                    continue;
+                }
+
+                switch (input->type)
                 {
                     // If None, then assume that no change in joy state
                     case InputType::None:
@@ -406,19 +412,21 @@ class PointStampedMirrorNode : public rclcpp::Node
                     // If Axis or Trigger, then check the axes array in the joy states
                     case InputType::Axis:
                     case InputType::Trigger:
-                        old_val = previous_joy_state.axes.at(input.index);
-                        new_val = latest_joy_state.axes.at(input.index);
+                        old_val = previous_joy_state.axes.at(input->index);
+                        new_val = latest_joy_state.axes.at(input->index);
                         break;
                     // If Button, then check the buttons array in the joy states
                     case InputType::Button:
-                        old_val = previous_joy_state.buttons.at(input.index);
-                        new_val = latest_joy_state.buttons.at(input.index);
+                        old_val = previous_joy_state.buttons.at(input->index);
+                        new_val = latest_joy_state.buttons.at(input->index);
                         break;
                 }
 
+                // If any of the inputs are different, immediately break the loop
                 if (old_val != new_val)
                 {
                     result = true;
+                    break;
                 }
             }
             return result;
@@ -426,7 +434,7 @@ class PointStampedMirrorNode : public rclcpp::Node
 
         /// @brief Returns true if control inputs are enabled based on controller input (or if always_enable is trueSS)
         /// @param input - The controller input that will enable this function
-        bool control_enabled(const MovementInput input)
+        bool control_enabled(const std::optional<MovementInput> input)
         {
             
             if (always_enable)
@@ -434,7 +442,7 @@ class PointStampedMirrorNode : public rclcpp::Node
                 return true;
             }
 
-            return latest_joy_state.buttons.at(input.index);
+            return latest_joy_state.buttons.at(input->index);
         }
 
         //
@@ -454,11 +462,17 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @param orig_message - The message that will be modified with new values
         /// @param axis_type - The directional axis of the message that will be modified
         /// @param is_increasing - Whethe the modification will involve increasing or decreasing the value
-        geometry_msgs::msg::PointStamped modify_axis(const MovementInput input,
+        geometry_msgs::msg::PointStamped modify_axis(const std::optional<MovementInput> input,
                                                             const geometry_msgs::msg::PointStamped orig_message,
                                                             const AxisType axis_type,
                                                             const bool is_increasing)
         {
+            // If the input is null, then return the original message
+            if (!input)
+            {
+                return orig_message;
+            }
+            
             // Initialize variables
             geometry_msgs::msg::PointStamped new_message = orig_message;
             double reading = 0.0f;
@@ -467,31 +481,31 @@ class PointStampedMirrorNode : public rclcpp::Node
                                 curr_z_max;
             
             // Based on the input type, take in the appropriate readings from the joy_state
-            switch (input.type)
+            switch (input->type)
             {
                 case InputType::None:
                     break;
                 case InputType::Axis:
-                    reading = latest_joy_state.axes.at(input.index);
+                    reading = latest_joy_state.axes.at(input->index);
                     break;
                 case InputType::Trigger:
-                    reading = 0.5 - (latest_joy_state.axes.at(input.index)/2.0);
+                    reading = 0.5 - (latest_joy_state.axes.at(input->index)/2.0);
                     break;
                 case InputType::Button:
-                    reading = latest_joy_state.buttons.at(input.index);
+                    reading = latest_joy_state.buttons.at(input->index);
                     break;
             }
 
             // If the input type is Axis, check reading based on whether it's above or below 0.0 and is_increasing
             // OR if the input type is not Axis, see if the reading is not 0.0
-            if ((input.type == InputType::Axis && ((is_increasing && reading > 0.0f) || (!is_increasing && reading < 0.0f))) ||
-                (input.type != InputType::Axis && reading != 0.0f))
+            if ((input->type == InputType::Axis && ((is_increasing && reading > 0.0f) || (!is_increasing && reading < 0.0f))) ||
+                (input->type != InputType::Axis && reading != 0.0f))
             {
                 // If the condition is satisfied, calculate the new_value for new_message
                 double new_value = max_value * reading;
                 // If the input type is not Axis AND the value is to be decreased (not increased),
                 // then flip the sign of the new_value
-                if (input.type != InputType::Axis && !is_increasing)
+                if (input->type != InputType::Axis && !is_increasing)
                 {
                     new_value = -new_value;
                 }
@@ -531,9 +545,10 @@ class PointStampedMirrorNode : public rclcpp::Node
         //
         /// @brief Adjusts max values to defined alternative values based on controller input
         /// @param input - The controller input that will enable this function
-        void alt_enabled(MovementInput input)
+        void alt_enabled(std::optional<MovementInput> input)
         {
-            if (input.type == InputType::None)
+            // If the input is null, set the current max values and return immediately 
+            if (!input)
             {
                 curr_x_max = x_max;
                 curr_y_max = y_max;
@@ -541,7 +556,7 @@ class PointStampedMirrorNode : public rclcpp::Node
                 return;
             }
             
-            float input_reading = latest_joy_state.buttons.at(input.index);
+            float input_reading = latest_joy_state.buttons.at(input->index);
             if (input_reading == 0.0)
             {
                 curr_x_max = x_max;
@@ -672,24 +687,22 @@ class PointStampedMirrorNode : public rclcpp::Node
             
         }
 
-        /// @brief Returns a MovementInput object for an input assignment by referencing to an input map
+        /// @brief Returns an optional MovementInput object for an input assignment by referencing to an input map
         /// @param input_assignment - The name of the input that is used for that function
         /// @param map - The input mapping based on the input scheme from the device config file
-        MovementInput function_input(std::string input_assignment, std::map<std::string, int> map)
+        std::optional<MovementInput> function_input(const std::string input_assignment, const std::map<std::string, int> map)
         {
-            MovementInput result_input;
-            
             if (input_assignment != "UNUSED")
             {
-                int index = map[input_assignment];
-                result_input.index = index;
+                MovementInput result_input;
+                result_input.index = map.at(input_assignment);
                 result_input.type = input_type(input_assignment);
 
                 return result_input;
             }
             else
             {
-                return result_input;
+                return std::nullopt;
             }
         }
 };
