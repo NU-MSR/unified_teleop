@@ -60,12 +60,6 @@
 
 using std::string;
 
-geometry_msgs::msg::PointStamped command, p_cmd;
-sensor_msgs::msg::Joy latest_joy_state, previous_joy_state;
-bool fresh_joy_state = false;
-bool always_enable = false;
-const float rate_of_change = 1.5 * std::pow(10, -5); // USER CAN ADJUST, KEEP IT EXTREMELY SMALL
-
 /// @brief The input type of an input (Axis, Trigger, Button)
 enum class InputType
 {
@@ -103,35 +97,36 @@ class PointStampedMirrorNode : public rclcpp::Node
             //
             // PARAMETERS
             //
+            using namespace rosnu; // Using the parameter helper functions from the rosnu namespace
             // Frequency of publisher
-            double pub_frequency = rosnu::declare_and_get_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
+            double pub_frequency = declare_and_get_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
             // Function -> Controller input assignments from control scheme parameters
-            const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *this, "Button assigned to enable control inputs");
-            const std::string alt_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *this, "Button assigned to activate alternative max values");
-            const std::string x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *this, "Button assigned to increase the x-axis value of the robot");
-            const std::string x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *this, "Button assigned to decrease the x-axis value of the robot");
-            const std::string y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *this, "Button assigned to increase the y-axis value of the robot");
-            const std::string y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *this, "Button assigned to decrease the y-axis value of the robot");
-            const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *this, "Button assigned to increase the z-axis value of the robot");
-            const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *this, "Button assigned to decrease the z-axis value of the robot");
+            const std::string enable_assignment = declare_and_get_param<std::string>("enable_control", "UNUSED", *this, "Button assigned to enable control inputs");
+            const std::string alt_assignment = declare_and_get_param<std::string>("alt_enable", "UNUSED", *this, "Button assigned to activate alternative max values");
+            const std::string x_inc_assignment = declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *this, "Button assigned to increase the x-axis value of the robot");
+            const std::string x_dec_assignment = declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *this, "Button assigned to decrease the x-axis value of the robot");
+            const std::string y_inc_assignment = declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *this, "Button assigned to increase the y-axis value of the robot");
+            const std::string y_dec_assignment = declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *this, "Button assigned to decrease the y-axis value of the robot");
+            const std::string z_inc_assignment = declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *this, "Button assigned to increase the z-axis value of the robot");
+            const std::string z_dec_assignment = declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *this, "Button assigned to decrease the z-axis value of the robot");
             // Additional parameters
-            x_max = rosnu::declare_and_get_param<float>("x_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            y_max = rosnu::declare_and_get_param<float>("y_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            z_max = rosnu::declare_and_get_param<float>("z_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
-            alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
-            alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
-            x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *this, "Whether the input for this movement should be flipped");
-            y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *this, "Whether the input for this movement should be flipped");
-            z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *this, "Whether the input for this movement should be flipped");
+            x_max = declare_and_get_param<float>("x_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            y_max = declare_and_get_param<float>("y_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            z_max = declare_and_get_param<float>("z_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            alt_x_max = declare_and_get_param<float>("alt_x_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            alt_y_max = declare_and_get_param<float>("alt_y_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            alt_z_max = declare_and_get_param<float>("alt_z_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            x_flip = declare_and_get_param<bool>("x_flip", false, *this, "Whether the input for this movement should be flipped");
+            y_flip = declare_and_get_param<bool>("y_flip", false, *this, "Whether the input for this movement should be flipped");
+            z_flip = declare_and_get_param<bool>("z_flip", false, *this, "Whether the input for this movement should be flipped");
             // Modifier parameters
-            boundary_radius = rosnu::declare_and_get_param<float>("boundary_radius", 0.0f, *this, "Radius of the spherical space around the zero position that the robot can move in");
-            lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 0.0f, *this, "Factor to the rate of change for the output's values");
-            x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *this, "The offset for the message's zero value");
-            y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *this, "The offset for the message's zero value");
-            z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *this, "The offset for the message's zero value");
+            boundary_radius = declare_and_get_param<float>("boundary_radius", 0.0f, *this, "Radius of the spherical space around the zero position that the robot can move in");
+            lin_rate_chg_fac = declare_and_get_param<float>("lin_rate_chg_fac", 0.0f, *this, "Factor to the rate of change for the output's values");
+            x_offset = declare_and_get_param<float>("x_offset", 0.0f, *this, "The offset for the message's zero value");
+            y_offset = declare_and_get_param<float>("y_offset", 0.0f, *this, "The offset for the message's zero value");
+            z_offset = declare_and_get_param<float>("z_offset", 0.0f, *this, "The offset for the message's zero value");
             // Whether control input is ALWAYS enabled
-            always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *this, "Whether control input is always enabled (USE WITH CAUTION)");
+            always_enable = declare_and_get_param<bool>("always_enable", false, *this, "Whether control input is always enabled (USE WITH CAUTION)");
             
             //
             // SUBSCRIBERS
@@ -147,7 +142,7 @@ class PointStampedMirrorNode : public rclcpp::Node
             // INTEGRATING INPUT & OUTPUT SCHEMES
             //
             // Getting the input device config from launch file parameters
-            const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *this, "Chosen input device config file");
+            const std::string input_device_config_file = declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *this, "Chosen input device config file");
             // Creating a controller input -> associated joy message index number map from the input device config file
             std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
             std::string full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
@@ -210,6 +205,12 @@ class PointStampedMirrorNode : public rclcpp::Node
         //
         // MEMBER VARIABLE DECLARATIONS
         //
+        // Variable initialization
+        geometry_msgs::msg::PointStamped command, p_cmd;
+        sensor_msgs::msg::Joy latest_joy_state, previous_joy_state;
+        bool fresh_joy_state = false;
+        bool always_enable = false;
+        const float rate_of_change = 1.5 * std::pow(10, -5); // USER CAN ADJUST, KEEP IT EXTREMELY SMALL
         // For node parameters
         bool is_first_joy; // Whether the received joy_state is the first one
         bool is_joy_freq; // Whether the node only publishes with every new received joy_state
