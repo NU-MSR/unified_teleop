@@ -1,7 +1,7 @@
 # An annotated version of dualshock4_mapping.yaml
 
 # Name of the control device, used for logging in nodes
-name: "test controller"
+name: "dualshock 4 controller"
 
 # A dictionary where the mapping is: input_name -> joy_index_number
 # Make sure to take note of the input_name(s), you will use them for creating your control scheme

@@ -8,16 +8,16 @@
     <catch2_launch_file description='Integration test for each of the Teleop Nodes'/>
 
     <!-- Duration of the integration test -->
-    <arg name='test_duration' default='60.0' description='Max length of test in seconds.' />
+    <arg name='test_duration' default='15.0' description='Max length of test in seconds.' />
 
 
     <!-- Run the Teleop Nodes to be tested -->
     <!-- The point_stamped_mirror node -->
-    <node name="point_stamped_mirror_node" pkg="unified_teleop" exec="point_stamped_incr">
+    <!-- <node name="point_stamped_mirror_node" pkg="unified_teleop" exec="point_stamped_mirror">
         <param from="$(find-pkg-share unified_teleop)/test/output_scheme_test.yaml" />
         <param name="input_device_config" value="input_mapping_test" />
         <remap from="desired_position" to="point_stamped_mirror/desired_position" />
-    </node>
+    </node> -->
 
     <!--
     catch2_integration_test_node
@@ -29,13 +29,13 @@
     -->
     <catch2_integration_test_node
         pkg='unified_teleop'
-        exec='integration_test_node'>
+        exec='playground_test_node'>
         <param name='test_duration' value='$(var test_duration)'/>
     </catch2_integration_test_node>
 
     <!-- Launch the ROS2 bag with the inputs and expected outputs for the integration test -->
     <executable 
-        cmd="ros2 bag play $(find-pkg-share unified_teleop)/test/pntstmp_mirror -p -r 0.03 --remap /omnid2/joy:=/joy /omnid2/delta/desired_position:=/ros2_bag/desired_position"
+        cmd="ros2 bag play $(find-pkg-share unified_teleop)/test/joy_test -p"
         name="ros2_bag_play"
         output="screen">
     </executable>

@@ -333,7 +333,7 @@ class PointStampedIncrNode : public rclcpp::Node
             //
             // PUBLISHERS
             //
-            pntstmpd_pos_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("desired_position", 100);
+            pntstmpd_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("desired_position", 100);
 
             //
             // INTEGRATING INPUT & OUTPUT SCHEMES
@@ -437,11 +437,11 @@ class PointStampedIncrNode : public rclcpp::Node
                 geometry_msgs::msg::PointStamped offset_cmd = add_pntstmp(command, offset_command());
 
                 offset_cmd.header.stamp = current_time;
-                pntstmpd_pos_pub->publish(offset_cmd);
+                pntstmpd_pub->publish(offset_cmd);
             }
         }
         rclcpp::TimerBase::SharedPtr timer_;
-        rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pntstmpd_pos_pub;
+        rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pntstmpd_pub;
 
         void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state) const
         {

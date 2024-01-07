@@ -5,6 +5,8 @@
       deadzone: 0.1
       autorepeat_rate: 20.0
 
+  # Param to test: _max & alt__max values, _flip outputs
+  # Modifiers to test: Rate of Change, Offset
   twist_mirror_node:
     ros__parameters:
       x_axis_inc: "axis_left_stick_y"
@@ -17,6 +19,19 @@
       enable_control: "button_r1"
       alt_enable: "button_l1"
 
+      # Testing Params
+      y_max: 0.75
+      alt_x_max: 0.15
+      x_flip: true
+
+      # Testing Modifiers
+      lin_rate_chg_fac: 0.75
+      ang_rate_chg_fac: 0.45
+      z_offset: -0.5
+
+
+  # Param to test: _max & alt__max values, _flip outputs
+  # Modifiers to test: Rate of Change, Spherical Boundary Radius, Offset
   point_stamped_mirror_node:
     ros__parameters:
       x_axis_inc: "axis_right_stick_y"
@@ -29,19 +44,23 @@
       enable_control: "button_r1"
       alt_enable: "button_l1"
 
-      # x_max: 0.3
-      # y_max: 0.3
-      # z_max: 0.3
-      # alt_x_max: 0.15
-      # alt_y_max: 0.15
-      # alt_z_max: 0.15
+      # Testing Params
+      x_max: 0.3
+      y_max: 0.3
+      z_max: 0.3
+      alt_x_max: 0.15
+      alt_y_max: 0.15
+      alt_z_max: 0.15
+      x_flip: true
+      y_flip: true
 
-      # reset_enable: "button_cross"
+      # Testing Modifiers
+      lin_rate_chg_fac: 0.8
+      boundary_radius: 0.13
+      z_offset: 0.355
 
-      # lin_rate_chg_fac: 2.0
-      # boundary_radius: 0.13
-      # z_offset: 0.355
-
+  # Param to test: _max & alt__max values, _flip outputs
+  # Modifiers to test: Rate of Change, Spherical Boundary Radius, Offset
   point_stamped_incr_node:
     ros__parameters:
       x_axis_inc: "axis_right_stick_y"
@@ -53,16 +72,19 @@
 
       enable_control: "button_r1"
       alt_enable: "button_l1"
+      reset_enable: "button_cross"
 
-      # x_max: 0.3
-      # y_max: 0.3
-      # z_max: 0.3
-      # alt_x_max: 0.15
-      # alt_y_max: 0.15
-      # alt_z_max: 0.15
+      # Testing Params
+      x_max: 0.3
+      y_max: 0.3
+      z_max: 0.3
+      alt_x_max: 0.2
+      alt_y_max: 0.2
+      alt_z_max: 0.2
+      x_flip: true
+      y_flip: false
 
-      # reset_enable: "button_cross"
-
-      # lin_rate_chg_fac: 2.0
-      # boundary_radius: 0.13
-      # z_offset: 0.355
+      # Testing Modifiers
+      lin_rate_chg_fac: 6.0
+      boundary_radius: 0.13
+      z_offset: 0.355

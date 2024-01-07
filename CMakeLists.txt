@@ -10,16 +10,17 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(rosbag2_interfaces REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 ###########
 ## Build ##
 ###########
 
-ament_export_dependencies(rclcpp geometry_msgs sensor_msgs)
+ament_export_dependencies(rclcpp geometry_msgs sensor_msgs rosbag2_interfaces)
 
 set(UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES
-  rclcpp geometry_msgs sensor_msgs
+  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces
 )
 set(UNIFIED_TELEOP_TARGET_LINK_LIBRARIES
   cmakeme_flags yaml-cpp
@@ -171,6 +172,25 @@ if(BUILD_TESTING)
   )
   install(TARGETS
     ${PROJECT_NAME}_integration_test_node
+    RUNTIME DESTINATION lib/${PROJECT_NAME}
+  )
+
+  # playground_test
+  add_executable(${PROJECT_NAME}_playground_test_node test/playground_test_node.cpp)
+  set_target_properties(${PROJECT_NAME}_playground_test_node
+    PROPERTIES
+    OUTPUT_NAME playground_test_node
+    PREFIX ""
+  )
+  ament_target_dependencies(${PROJECT_NAME}_playground_test_node
+    ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+  )
+  target_link_libraries(${PROJECT_NAME}_playground_test_node
+    ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+    catch_ros2::catch_ros2_with_node_main
+  )
+  install(TARGETS
+    ${PROJECT_NAME}_playground_test_node
     RUNTIME DESTINATION lib/${PROJECT_NAME}
   )
 

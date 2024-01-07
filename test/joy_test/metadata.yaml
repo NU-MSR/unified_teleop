@@ -1,0 +1,28 @@
+rosbag2_bagfile_information:
+  version: 7
+  storage_identifier: mcap
+  duration:
+    nanoseconds: 10459807010
+  starting_time:
+    nanoseconds_since_epoch: 1700519937363174011
+  message_count: 20
+  topics_with_message_count:
+    - topic_metadata:
+        name: /joy
+        type: sensor_msgs/msg/Joy
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+        type_description_hash: RIHS01_0d356c79cad3401e35ffeb75a96a96e08be3ef896b8b83841d73e890989372c5
+      message_count: 20
+  compression_format: ""
+  compression_mode: ""
+  relative_file_paths:
+    - joy_test_0.mcap
+  files:
+    - path: joy_test_0.mcap
+      starting_time:
+        nanoseconds_since_epoch: 1700519937363174011
+      duration:
+        nanoseconds: 10459807010
+      message_count: 20
+  custom_data: ~
