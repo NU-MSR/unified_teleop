@@ -8,36 +8,36 @@
 ///   joy (sensor_msgs/Joy) - A message containing current state of the control device's inputs
 ///
 /// @section Parameters
-///  `~/enable_control (std::string) [default "UNUSED"]`      - Button assigned to enable control inputs
-///  `~/alt_enable (std::string) [default "UNUSED"]`      - Button assigned to activate alternative max values
+///  `~/enable_control (string) [default "UNUSED"]`      - Button assigned to enable control inputs
+///  `~/alt_enable (string) [default "UNUSED"]`      - Button assigned to activate alternative max values
 ///
-///  `~/x_axis_inc (std::string) [default "UNUSED"]`      - Button assigned to increase the x-axis value of the robot
-///  `~/x_axis_dec (std::string) [default "UNUSED"]`      - Button assigned to decrease the x-axis value of the robot
-///  `~/y_axis_inc (std::string) [default "UNUSED"]`      - Button assigned to increase the y-axis value of the robot
-///  `~/y_axis_dec (std::string) [default "UNUSED"]`      - Button assigned to decrease the y-axis value of the robot
-///  `~/z_axis_inc (std::string) [default "UNUSED"]`      - Button assigned to increase the z-axis value of the robot
-///  `~/z_axis_dec (std::string) [default "UNUSED"]`      - Button assigned to decrease the z-axis value of the robot
+///  `~/x_axis_inc (string) [default "UNUSED"]`      - Button assigned to increase the x-axis value of the robot
+///  `~/x_axis_dec (string) [default "UNUSED"]`      - Button assigned to decrease the x-axis value of the robot
+///  `~/y_axis_inc (string) [default "UNUSED"]`      - Button assigned to increase the y-axis value of the robot
+///  `~/y_axis_dec (string) [default "UNUSED"]`      - Button assigned to decrease the y-axis value of the robot
+///  `~/z_axis_inc (string) [default "UNUSED"]`      - Button assigned to increase the z-axis value of the robot
+///  `~/z_axis_dec (string) [default "UNUSED"]`      - Button assigned to decrease the z-axis value of the robot
 ///
-///  `~/x_max (float) [default 1.0]`      - The maximum output value along that axis of movement
-///  `~/y_max (float) [default 1.0]`      - The maximum output value along that axis of movement
-///  `~/z_max (float) [default 1.0]`      - The maximum output value along that axis of movement
-///  `~/alt_x_max (float) [default 0.25]`      - The alternative maximum output value along that axis of movement
-///  `~/alt_x_max (float) [default 0.25]`      - The alternative maximum output value along that axis of movement
-///  `~/alt_x_max (float) [default 0.25]`      - The alternative maximum output value along that axis of movement
+///  `~/x_max (double) [default 1.0]`      - The maximum output value along that axis of movement
+///  `~/y_max (double) [default 1.0]`      - The maximum output value along that axis of movement
+///  `~/z_max (double) [default 1.0]`      - The maximum output value along that axis of movement
+///  `~/alt_x_max (double) [default 0.25]`      - The alternative maximum output value along that axis of movement
+///  `~/alt_x_max (double) [default 0.25]`      - The alternative maximum output value along that axis of movement
+///  `~/alt_x_max (double) [default 0.25]`      - The alternative maximum output value along that axis of movement
 ///
 ///  `~/x_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///  `~/y_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///  `~/z_flip (bool) [default false]`      - Whether the input for this movement should be flipped
 ///
-///  `~/boundary_radius (float) [default 0.0]`      - Radius of the spherical space around the zero position that the robot can move in
-///  `~/lin_rate_chg_fac (float) [default 0.0]`     - Factor to the rate of change for the output's values
-///  `~/x_offset (float) [default 0.0]`             - The offset for the message's zero value
-///  `~/y_offset (float) [default 0.0]`             - The offset for the message's zero value
-///  `~/z_offset (float) [default 0.0]`             - The offset for the message's zero value
+///  `~/boundary_radius (double) [default 0.0]`      - Radius of the spherical space around the zero position that the robot can move in
+///  `~/lin_rate_chg_fac (double) [default 0.0]`     - Factor to the rate of change for the output's values
+///  `~/x_offset (double) [default 0.0]`             - The offset for the message's zero value
+///  `~/y_offset (double) [default 0.0]`             - The offset for the message's zero value
+///  `~/z_offset (double) [default 0.0]`             - The offset for the message's zero value
 ///
 ///  `~/always_enable (bool) [default false]`      - Whether control input is always enabled (USE WITH CAUTION)
 ///
-///  `~/input_device_config_file (std::string) [default "dualshock4_mapping"]`      - Chosen input device config file
+///  `~/input_device_config_file (string) [default "dualshock4_mapping"]`      - Chosen input device config file
 
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
@@ -85,6 +85,7 @@ struct MovementInput
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
+using namespace rosnu; // Using the parameter helper functions from the rosnu namespace
 
 class PointStampedMirrorNode : public rclcpp::Node
 {
@@ -92,39 +93,41 @@ class PointStampedMirrorNode : public rclcpp::Node
         //
         // CONSTRUCTOR
         //
-        PointStampedMirrorNode() : Node("point_stamped_mirror")
+        PointStampedMirrorNode() :  Node("point_stamped_mirror"),
+                                    fresh_joy_state(false),
+                                    always_enable(false),
+                                    rate_of_change(1.5 * std::pow(10, -5))
         {
             //
             // PARAMETERS
             //
-            using namespace rosnu; // Using the parameter helper functions from the rosnu namespace
             // Frequency of publisher
-            double pub_frequency = declare_and_get_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
+            auto pub_frequency = declare_and_get_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
             // Function -> Controller input assignments from control scheme parameters
-            const std::string enable_assignment = declare_and_get_param<std::string>("enable_control", "UNUSED", *this, "Button assigned to enable control inputs");
-            const std::string alt_assignment = declare_and_get_param<std::string>("alt_enable", "UNUSED", *this, "Button assigned to activate alternative max values");
-            const std::string x_inc_assignment = declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *this, "Button assigned to increase the x-axis value of the robot");
-            const std::string x_dec_assignment = declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *this, "Button assigned to decrease the x-axis value of the robot");
-            const std::string y_inc_assignment = declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *this, "Button assigned to increase the y-axis value of the robot");
-            const std::string y_dec_assignment = declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *this, "Button assigned to decrease the y-axis value of the robot");
-            const std::string z_inc_assignment = declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *this, "Button assigned to increase the z-axis value of the robot");
-            const std::string z_dec_assignment = declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *this, "Button assigned to decrease the z-axis value of the robot");
+            const auto enable_assignment = declare_and_get_param<string>("enable_control", "UNUSED", *this, "Button assigned to enable control inputs");
+            const auto alt_assignment = declare_and_get_param<string>("alt_enable", "UNUSED", *this, "Button assigned to activate alternative max values");
+            const auto x_inc_assignment = declare_and_get_param<string>("x_axis_inc", "UNUSED", *this, "Button assigned to increase the x-axis value of the robot");
+            const auto x_dec_assignment = declare_and_get_param<string>("x_axis_dec", "UNUSED", *this, "Button assigned to decrease the x-axis value of the robot");
+            const auto y_inc_assignment = declare_and_get_param<string>("y_axis_inc", "UNUSED", *this, "Button assigned to increase the y-axis value of the robot");
+            const auto y_dec_assignment = declare_and_get_param<string>("y_axis_dec", "UNUSED", *this, "Button assigned to decrease the y-axis value of the robot");
+            const auto z_inc_assignment = declare_and_get_param<string>("z_axis_inc", "UNUSED", *this, "Button assigned to increase the z-axis value of the robot");
+            const auto z_dec_assignment = declare_and_get_param<string>("z_axis_dec", "UNUSED", *this, "Button assigned to decrease the z-axis value of the robot");
             // Additional parameters
-            x_max = declare_and_get_param<float>("x_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            y_max = declare_and_get_param<float>("y_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            z_max = declare_and_get_param<float>("z_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            alt_x_max = declare_and_get_param<float>("alt_x_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
-            alt_y_max = declare_and_get_param<float>("alt_y_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
-            alt_z_max = declare_and_get_param<float>("alt_z_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            x_max = declare_and_get_param<double>("x_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            y_max = declare_and_get_param<double>("y_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            z_max = declare_and_get_param<double>("z_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            alt_x_max = declare_and_get_param<double>("alt_x_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            alt_y_max = declare_and_get_param<double>("alt_y_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            alt_z_max = declare_and_get_param<double>("alt_z_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
             x_flip = declare_and_get_param<bool>("x_flip", false, *this, "Whether the input for this movement should be flipped");
             y_flip = declare_and_get_param<bool>("y_flip", false, *this, "Whether the input for this movement should be flipped");
             z_flip = declare_and_get_param<bool>("z_flip", false, *this, "Whether the input for this movement should be flipped");
             // Modifier parameters
-            boundary_radius = declare_and_get_param<float>("boundary_radius", 0.0f, *this, "Radius of the spherical space around the zero position that the robot can move in");
-            lin_rate_chg_fac = declare_and_get_param<float>("lin_rate_chg_fac", 0.0f, *this, "Factor to the rate of change for the output's values");
-            x_offset = declare_and_get_param<float>("x_offset", 0.0f, *this, "The offset for the message's zero value");
-            y_offset = declare_and_get_param<float>("y_offset", 0.0f, *this, "The offset for the message's zero value");
-            z_offset = declare_and_get_param<float>("z_offset", 0.0f, *this, "The offset for the message's zero value");
+            boundary_radius = declare_and_get_param<double>("boundary_radius", 0.0f, *this, "Radius of the spherical space around the zero position that the robot can move in");
+            lin_rate_chg_fac = declare_and_get_param<double>("lin_rate_chg_fac", 0.0f, *this, "Factor to the rate of change for the output's values");
+            x_offset = declare_and_get_param<double>("x_offset", 0.0f, *this, "The offset for the message's zero value");
+            y_offset = declare_and_get_param<double>("y_offset", 0.0f, *this, "The offset for the message's zero value");
+            z_offset = declare_and_get_param<double>("z_offset", 0.0f, *this, "The offset for the message's zero value");
             // Whether control input is ALWAYS enabled
             always_enable = declare_and_get_param<bool>("always_enable", false, *this, "Whether control input is always enabled (USE WITH CAUTION)");
             
@@ -142,19 +145,19 @@ class PointStampedMirrorNode : public rclcpp::Node
             // INTEGRATING INPUT & OUTPUT SCHEMES
             //
             // Getting the input device config from launch file parameters
-            const std::string input_device_config_file = declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *this, "Chosen input device config file");
+            const auto input_device_config_file = declare_and_get_param<string>("input_device_config", "dualshock4_mapping", *this, "Chosen input device config file");
             // Creating a controller input -> associated joy message index number map from the input device config file
-            std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
-            std::string full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
-            YAML::Node input_device = YAML::LoadFile(full_path);
+            auto pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
+            auto full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
+            auto input_device = YAML::LoadFile(full_path);
             // Getting the input device name and printing it to the serial
-            const std::string device_name = input_device["name"].as<string>();
+            const auto device_name = input_device["name"].as<string>();
             RCLCPP_INFO(rclcpp::get_logger("point_stamped_mirror"), ("Currently using the " + device_name + " input device").c_str());
             // Creating the button map from the input device config file
-            std::map<std::string, int> button_map;
+            std::map<string, int> button_map;
             for (const auto& it : input_device["mapping"])
             {
-                button_map[it.first.as<std::string>()] = it.second.as<int>();
+                button_map[it.first.as<string>()] = it.second.as<int>();
             }
             // Initializing MovementInputs from the retrieved input assignments parameters and created button mapping
             enable_input = function_input(enable_assignment, button_map);
@@ -205,29 +208,29 @@ class PointStampedMirrorNode : public rclcpp::Node
         //
         // MEMBER VARIABLE DECLARATIONS
         //
-        // Variable initialization
+        // For joy and command messages
         geometry_msgs::msg::PointStamped command, p_cmd;
         sensor_msgs::msg::Joy latest_joy_state, previous_joy_state;
-        bool fresh_joy_state = false;
-        bool always_enable = false;
-        const float rate_of_change = 1.5 * std::pow(10, -5); // USER CAN ADJUST, KEEP IT EXTREMELY SMALL
+        bool fresh_joy_state;
+        bool always_enable;
+        const double rate_of_change;
         // For node parameters
         bool is_first_joy; // Whether the received joy_state is the first one
         bool is_joy_freq; // Whether the node only publishes with every new received joy_state
-        float curr_x_max;
-        float curr_y_max;
-        float curr_z_max;
-        float x_max;
-        float y_max;
-        float z_max;
-        float alt_x_max;
-        float alt_y_max;
-        float alt_z_max;
-        float boundary_radius;
-        float lin_rate_chg_fac;
-        float x_offset;
-        float y_offset;
-        float z_offset;
+        double curr_x_max;
+        double curr_y_max;
+        double curr_z_max;
+        double x_max;
+        double y_max;
+        double z_max;
+        double alt_x_max;
+        double alt_y_max;
+        double alt_z_max;
+        double boundary_radius;
+        double lin_rate_chg_fac;
+        double x_offset;
+        double y_offset;
+        double z_offset;
         bool x_flip;
         bool y_flip;
         bool z_flip;
@@ -306,7 +309,7 @@ class PointStampedMirrorNode : public rclcpp::Node
             if (boundary_radius != 0.0)
             {
                 // Find the robot's desired distance from home sqrd
-                float distance_from_home_sqrd = pow(p_cmd.point.x, 2) + pow(p_cmd.point.y, 2) + pow(p_cmd.point.z, 2);
+                double distance_from_home_sqrd = pow(p_cmd.point.x, 2) + pow(p_cmd.point.y, 2) + pow(p_cmd.point.z, 2);
                 // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
                 if (distance_from_home_sqrd > pow(boundary_radius, 2))
                 {
@@ -547,7 +550,7 @@ class PointStampedMirrorNode : public rclcpp::Node
                 return;
             }
             
-            float input_reading = latest_joy_state.buttons.at(input->index);
+            double input_reading = latest_joy_state.buttons.at(input->index);
             if (input_reading == 0.0)
             {
                 curr_x_max = x_max;
@@ -600,10 +603,10 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @brief Returns a PointStamped message that normalizes the values to a given magnitude
         /// @param input_command - The PointStamped message that will be normalized
         /// @param new_mag - The desired magnitude for the resulting PointStamped message
-        geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::PointStamped input_command, float new_mag)
+        geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::PointStamped input_command, double new_mag)
         {
             geometry_msgs::msg::PointStamped norm_command = input_command;
-            float magnitude = sqrt(input_command.point.x * input_command.point.x + input_command.point.y * input_command.point.y + input_command.point.z * input_command.point.z);
+            double magnitude = sqrt(input_command.point.x * input_command.point.x + input_command.point.y * input_command.point.y + input_command.point.z * input_command.point.z);
             
             if (new_mag == 0)
             {
@@ -651,7 +654,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @brief Returns the type of the input based on its name
         /// (Axis if it begins with an 'a', Trigger if it begins with a 't', Button if it begins with a 'b')
         /// @param input_name - The name of the controller input
-        InputType input_type(const std::string input_name)
+        InputType input_type(const string input_name)
         {
             if (input_name.empty())
             {
@@ -681,7 +684,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         /// @brief Returns an optional MovementInput object for an input assignment by referencing to an input map
         /// @param input_assignment - The name of the input that is used for that function
         /// @param map - The input mapping based on the input scheme from the device config file
-        std::optional<MovementInput> function_input(const std::string input_assignment, const std::map<std::string, int> map)
+        std::optional<MovementInput> function_input(const string input_assignment, const std::map<string, int> map)
         {
             if (input_assignment != "UNUSED")
             {
