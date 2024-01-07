@@ -66,7 +66,7 @@ bool fresh_joy_state = false;
 bool always_enable = false;
 const float rate_of_change = 1.5 * std::pow(10, -5); // USER CAN ADJUST, KEEP IT EXTREMELY SMALL
 
-/// @brief The input type of an input (Axis, Trigger, Button, None)
+/// @brief The input type of an input (Axis, Trigger, Button)
 enum class InputType
 {
     Axis,       // Inputs that are reflected in the axes array of the joy message, 
@@ -79,8 +79,6 @@ enum class InputType
 
     Button,     // Inputs that are reflected in the button array of the joy message,
                 // usually reflect any and all buttons that give a 0 or 1 input.
-
-    None        // An invalid or missing input.
 };
 
 /// @brief An object representing a particular function's input (e.g. move forward, move left),
@@ -88,7 +86,7 @@ enum class InputType
 struct MovementInput
 {
     int index; // Index number that correlates with its position in the joy message array
-    InputType type; // InputType that indicates the type of input it is (Axis, Trigger, Button, None)
+    InputType type; // InputType that indicates the type of input it is (Axis, Trigger, Button)
 };
 
 using namespace std::chrono_literals;
@@ -403,13 +401,7 @@ class PointStampedMirrorNode : public rclcpp::Node
                 }
 
                 switch (input->type)
-                {
-                    // If None, then assume that no change in joy state
-                    case InputType::None:
-                        old_val = 1.0;
-                        new_val = 1.0;
-                        break;
-                    // If Axis or Trigger, then check the axes array in the joy states
+                {// If Axis or Trigger, then check the axes array in the joy states
                     case InputType::Axis:
                     case InputType::Trigger:
                         old_val = previous_joy_state.axes.at(input->index);
@@ -483,8 +475,6 @@ class PointStampedMirrorNode : public rclcpp::Node
             // Based on the input type, take in the appropriate readings from the joy_state
             switch (input->type)
             {
-                case InputType::None:
-                    break;
                 case InputType::Axis:
                     reading = latest_joy_state.axes.at(input->index);
                     break;
@@ -658,7 +648,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         // INPUT/OUTPUT SCHEME FUNCTIONS
         //
         /// @brief Returns the type of the input based on its name
-        /// (Axis if it begins with an 'a', Trigger if it begins with a 't', Button if it begins with a 'b', and None if the string is empty)
+        /// (Axis if it begins with an 'a', Trigger if it begins with a 't', Button if it begins with a 'b')
         /// @param input_name - The name of the controller input
         InputType input_type(const std::string input_name)
         {
