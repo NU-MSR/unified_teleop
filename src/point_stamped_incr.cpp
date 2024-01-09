@@ -396,10 +396,10 @@ class PointStampedIncrNode : public rclcpp::Node
             if (fresh_joy_state == true)
             {
                 // If frequency set to 0, then only publishes messages when a new joy message is received
-                RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 0");
+                // RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 0");
                 if (is_joy_freq)
                 {
-                    RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 1");
+                    // RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST 1");
                     fresh_joy_state = false;
                 }
 
@@ -445,7 +445,7 @@ class PointStampedIncrNode : public rclcpp::Node
 
         void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state) const
         {
-            RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST JOY");
+            // RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST JOY");
             latest_joy_state = *joy_state;
             fresh_joy_state = true;
         }
