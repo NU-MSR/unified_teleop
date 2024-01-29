@@ -87,7 +87,7 @@ target_link_libraries(${PROJECT_NAME}_twist_merger
 
 # lifecycle_point_stamped_incr
 add_executable(${PROJECT_NAME}_lifecycle_point_stamped_incr src/lifecycle_point_stamped_incr.cpp)
-set_target_properties(${PROJECT_NAME}_point_stamped_incr
+set_target_properties(${PROJECT_NAME}_lifecycle_point_stamped_incr
   PROPERTIES
   OUTPUT_NAME lifecycle_point_stamped_incr
   PREFIX ""

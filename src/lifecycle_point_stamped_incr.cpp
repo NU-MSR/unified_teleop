@@ -54,6 +54,17 @@
 #include <functional>
 #include <memory>
 
+// Additional libraries for Lifecycle nodes
+#include <thread>
+#include <utility>
+#include "lifecycle_msgs/msg/transition.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "rclcpp/publisher.hpp"
+#include "rclcpp_lifecycle/lifecycle_node.hpp"
+#include "rclcpp_lifecycle/lifecycle_publisher.hpp"
+#include "rcutils/logging_macros.h"
+#include "std_msgs/msg/string.hpp"
+
 using std::string;
 
 static geometry_msgs::msg::PointStamped command;
@@ -110,90 +121,90 @@ class MovementInput
         MovementInput(int index_no, InputType input_type) : index(index_no), type(input_type) {}
 };
 
-/// Additional parameter helper functions developed my NU MSR
-namespace rosnu
-{
-  /// @brief declare a parameter without a default value. If the value is not set externally,
-  /// an exception will be thrown when trying to get_param for this parameter.
-  /// @tparam T - type of the parameter
-  /// @param name - name of the parameter
-  /// @param node - node for which the parameter is declared
-  /// @param desc - (optional) the parameter description
-  /// @throw 
-  ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
-  ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
-  template<class T>
-  void declare_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
-  {
-    // init descriptor object and fill in description
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = desc;
+// /// Additional parameter helper functions developed my NU MSR
+// namespace rosnu
+// {
+//   /// @brief declare a parameter without a default value. If the value is not set externally,
+//   /// an exception will be thrown when trying to get_param for this parameter.
+//   /// @tparam T - type of the parameter
+//   /// @param name - name of the parameter
+//   /// @param node - node for which the parameter is declared
+//   /// @param desc - (optional) the parameter description
+//   /// @throw 
+//   ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
+//   ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
+//   template<class T>
+//   void declare_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
+//   {
+//     // init descriptor object and fill in description
+//     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+//     descriptor.description = desc;
 
-    // declare parameter without a default value
-    node.declare_parameter<T>(name, descriptor);
-  }
+//     // declare parameter without a default value
+//     node.declare_parameter<T>(name, descriptor);
+//   }
 
-  /// @brief declare a parameter with a default value.
-  /// @tparam T - type of the parameter
-  /// @param name - name of the parameter
-  /// @param def - the default parameter value
-  /// @param node - node for which the parameter is declared
-  /// @param desc - (optional) the parameter description
-  /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
-  template<class T>
-  void declare_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
-  {
-    // init descriptor object and fill in description
-    auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-    descriptor.description = desc;
+//   /// @brief declare a parameter with a default value.
+//   /// @tparam T - type of the parameter
+//   /// @param name - name of the parameter
+//   /// @param def - the default parameter value
+//   /// @param node - node for which the parameter is declared
+//   /// @param desc - (optional) the parameter description
+//   /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
+//   template<class T>
+//   void declare_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
+//   {
+//     // init descriptor object and fill in description
+//     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
+//     descriptor.description = desc;
     
-    // declare node with default value
-    node.declare_parameter<T>(name, def, descriptor);
-  }
+//     // declare node with default value
+//     node.declare_parameter<T>(name, def, descriptor);
+//   }
 
-  /// @brief get the value of a parameter.
-  /// @tparam T - type of the parameter
-  /// @param name - name of the parameter
-  /// @param node - node for which the parameter was declared
-  /// @return value of the parameter
-  /// @throw rclcpp::exceptions::ParameterNotDeclaredException if the parameter has not been declared
-  template<class T>
-  T get_param(const std::string & name, rclcpp::Node & node)
-  {
-    return node.get_parameter(name).get_parameter_value().get<T>();
-  }
+//   /// @brief get the value of a parameter.
+//   /// @tparam T - type of the parameter
+//   /// @param name - name of the parameter
+//   /// @param node - node for which the parameter was declared
+//   /// @return value of the parameter
+//   /// @throw rclcpp::exceptions::ParameterNotDeclaredException if the parameter has not been declared
+//   template<class T>
+//   T get_param(const std::string & name, rclcpp::Node & node)
+//   {
+//     return node.get_parameter(name).get_parameter_value().get<T>();
+//   }
   
-  /// @brief declare a parameter without a default value and return the parameter value.
-  /// @tparam T - type of the parameter
-  /// @param name - name of the parameter
-  /// @param node - node for which the parameter is declared
-  /// @param desc - (optional) the parameter description
-  /// @return value of the parameter
-  /// @throw 
-  ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
-  ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
-  template<class T>
-  T declare_and_get_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
-  {
-    declare_param<T>(name, node, desc);
-    return get_param<T>(name, node);
-  }
+//   /// @brief declare a parameter without a default value and return the parameter value.
+//   /// @tparam T - type of the parameter
+//   /// @param name - name of the parameter
+//   /// @param node - node for which the parameter is declared
+//   /// @param desc - (optional) the parameter description
+//   /// @return value of the parameter
+//   /// @throw 
+//   ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
+//   ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
+//   template<class T>
+//   T declare_and_get_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
+//   {
+//     declare_param<T>(name, node, desc);
+//     return get_param<T>(name, node);
+//   }
 
-  /// @brief declare a parameter with a default value and return the parameter value.
-  /// @tparam T - type of the parameter
-  /// @param name - name of the parameter
-  /// @param def - the default parameter value
-  /// @param node - node for which the parameter is declared
-  /// @param desc - (optional) the parameter description
-  /// @return value of the parameter
-  /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
-  template<class T>
-  T declare_and_get_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
-  {
-    declare_param<T>(name, def, node, desc);
-    return get_param<T>(name, node);
-  }
-}
+//   /// @brief declare a parameter with a default value and return the parameter value.
+//   /// @tparam T - type of the parameter
+//   /// @param name - name of the parameter
+//   /// @param def - the default parameter value
+//   /// @param node - node for which the parameter is declared
+//   /// @param desc - (optional) the parameter description
+//   /// @return value of the parameter
+//   /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
+//   template<class T>
+//   T declare_and_get_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
+//   {
+//     declare_param<T>(name, def, node, desc);
+//     return get_param<T>(name, node);
+//   }
+// }
 
 /// @brief Returns the type of the input based on its name
 ///        (Axis if it begins with an 'a', Trigger if it begins with a 't', Button if it begins with a 'b', and None if the string is empty)
@@ -271,10 +282,11 @@ static geometry_msgs::msg::PointStamped add_pntstmp(geometry_msgs::msg::PointSta
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
-class LifecyclePointStampedIncrNode : public rclcpp::Node
+class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
 {
     public:
         bool is_joy_freq;
+        double pub_frequency;
         MovementInput enable_input;
         MovementInput reset_input;
         MovementInput alt_input;
@@ -285,68 +297,125 @@ class LifecyclePointStampedIncrNode : public rclcpp::Node
         MovementInput z_inc_input;
         MovementInput z_dec_input;
 
-        LifecyclePointStampedIncrNode() : Node("lifecycle_point_stamped_incr")
+        LifecyclePointStampedIncrNode(bool intra_process_comms = false) : LifecycleNode("lifecycle_point_stamped_incr",
+            rclcpp::NodeOptions().use_intra_process_comms(intra_process_comms))
         {
+            // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TESTING CONSTRUCTOR");
+            
             //
             // PARAMETERS
             //
             // Frequency of publisher
-            double pub_frequency = rosnu::declare_and_get_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
+            declare_parameter("frequency", 0.);
+            pub_frequency = get_parameter("frequency").as_double();
+            // double pub_frequency = rosnu::declare_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
             // Function -> Controller input assignments from control scheme parameters
-            const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *this, "Button assigned to enable control inputs");
-            const std::string reset_assignment = rosnu::declare_and_get_param<std::string>("reset_enable", "UNUSED", *this, "Button assigned to reset robot position");
-            const std::string alt_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *this, "Button assigned to activate alternative max values");
-            const std::string x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *this, "Button assigned to increase the x-axis value of the robot");
-            const std::string x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *this, "Button assigned to decrease the x-axis value of the robot");
-            const std::string y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *this, "Button assigned to increase the y-axis value of the robot");
-            const std::string y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *this, "Button assigned to decrease the y-axis value of the robot");
-            const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *this, "Button assigned to increase the z-axis value of the robot");
-            const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *this, "Button assigned to decrease the z-axis value of the robot");
+            declare_parameter("enable_control", "UNUSED");
+            const std::string enable_assignment = get_parameter("enable_control").as_string();
+            declare_parameter("reset_enable", "UNUSED");
+            const std::string reset_assignment = get_parameter("reset_enable").as_string();
+            declare_parameter("alt_enable", "UNUSED");
+            const std::string alt_assignment = get_parameter("alt_enable").as_string();
+            declare_parameter("x_axis_inc", "UNUSED");
+            const std::string x_inc_assignment = get_parameter("x_axis_inc").as_string();
+            declare_parameter("x_axis_dec", "UNUSED");
+            const std::string x_dec_assignment = get_parameter("x_axis_dec").as_string();
+            declare_parameter("y_axis_inc", "UNUSED");
+            const std::string y_inc_assignment = get_parameter("y_axis_inc").as_string();
+            declare_parameter("y_axis_dec", "UNUSED");
+            const std::string y_dec_assignment = get_parameter("y_axis_dec").as_string();
+            declare_parameter("z_axis_inc", "UNUSED");
+            const std::string z_inc_assignment = get_parameter("z_axis_inc").as_string();
+            declare_parameter("z_axis_dec", "UNUSED");
+            const std::string z_dec_assignment = get_parameter("z_axis_dec").as_string();
+
+            // const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *this, "Button assigned to enable control inputs");
+            // const std::string reset_assignment = rosnu::declare_and_get_param<std::string>("reset_enable", "UNUSED", *this, "Button assigned to reset robot position");
+            // const std::string alt_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *this, "Button assigned to activate alternative max values");
+            // const std::string x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *this, "Button assigned to increase the x-axis value of the robot");
+            // const std::string x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *this, "Button assigned to decrease the x-axis value of the robot");
+            // const std::string y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *this, "Button assigned to increase the y-axis value of the robot");
+            // const std::string y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *this, "Button assigned to decrease the y-axis value of the robot");
+            // const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *this, "Button assigned to increase the z-axis value of the robot");
+            // const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *this, "Button assigned to decrease the z-axis value of the robot");
+            
             // Additional parameters
-            x_max = rosnu::declare_and_get_param<float>("x_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            y_max = rosnu::declare_and_get_param<float>("y_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            z_max = rosnu::declare_and_get_param<float>("z_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
-            alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
-            alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
-            x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *this, "Whether the input for this movement should be flipped");
-            y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *this, "Whether the input for this movement should be flipped");
-            z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *this, "Whether the input for this movement should be flipped");
+            declare_parameter("x_max", 0.);
+            x_max = get_parameter("x_max").as_double();
+            declare_parameter("y_max", 0.);
+            y_max = get_parameter("y_max").as_double();
+            declare_parameter("z_max", 0.);
+            z_max = get_parameter("z_max").as_double();
+            declare_parameter("alt_x_max", 0.);
+            alt_x_max = get_parameter("alt_x_max").as_double();
+            declare_parameter("alt_y_max", 0.);
+            alt_y_max = get_parameter("alt_y_max").as_double();
+            declare_parameter("alt_z_max", 0.);
+            alt_z_max = get_parameter("alt_z_max").as_double();
+            declare_parameter("x_flip", 0.);
+            x_flip = get_parameter("x_flip").as_double();
+            declare_parameter("y_flip", 0.);
+            y_flip = get_parameter("y_flip").as_double();
+            declare_parameter("z_flip", 0.);
+            z_flip = get_parameter("z_flip").as_double();
+
+            // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TESTING PARAMETERS");
+
+            // x_max = rosnu::declare_and_get_param<float>("x_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            // y_max = rosnu::declare_and_get_param<float>("y_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            // z_max = rosnu::declare_and_get_param<float>("z_max", 1.0f, *this, "The maximum output value along that axis of movement");
+            // alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            // alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            // alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
+            // x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *this, "Whether the input for this movement should be flipped");
+            // y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *this, "Whether the input for this movement should be flipped");
+            // z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *this, "Whether the input for this movement should be flipped");
+
             // Modifier parameters
-            boundary_radius = rosnu::declare_and_get_param<float>("boundary_radius", 0.0f, *this, "Radius of the spherical space around the zero position that the robot can move in");
-            lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 1.0f, *this, "The scale in which the movement speed is multiplied by along that axis of movement");
+            declare_parameter("boundary_radius", 0.);
+            boundary_radius = get_parameter("boundary_radius").as_double();
+            declare_parameter("lin_rate_chg_fac", 0.);
+            lin_rate_chg_fac = get_parameter("lin_rate_chg_fac").as_double();
+
+            // boundary_radius = rosnu::declare_and_get_param<float>("boundary_radius", 0.0f, *this, "Radius of the spherical space around the zero position that the robot can move in");
+            // lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 1.0f, *this, "The scale in which the movement speed is multiplied by along that axis of movement");
+            
             if (lin_rate_chg_fac == 0.0) // lin_rate_chg_fac cannot be 0.0
             {
                 lin_rate_chg_fac = 1.0;
             }
-            x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *this, "The offset for the message's zero value");
-            y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *this, "The offset for the message's zero value");
-            z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *this, "The offset for the message's zero value");
+
+            declare_parameter("x_offset", 0.);
+            x_offset = get_parameter("x_offset").as_double();
+            declare_parameter("y_offset", 0.);
+            y_offset = get_parameter("y_offset").as_double();
+            declare_parameter("z_offset", 0.);
+            z_offset = get_parameter("z_offset").as_double();
+
+            // x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *this, "The offset for the message's zero value");
+            // y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *this, "The offset for the message's zero value");
+            // z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *this, "The offset for the message's zero value");
             // Whether control input is ALWAYS enabled
-            always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *this, "Whether control input is always enabled (USE WITH CAUTION)");
+            declare_parameter("always_enable", false);
+            always_enable = get_parameter("always_enable").as_bool();
 
-            //
-            // SUBSCRIBERS
-            //
-            joy_sub = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10, std::bind(&LifecyclePointStampedIncrNode::joy_callback, this, _1));
-
-            //
-            // PUBLISHERS
-            //
-            pntstmpd_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("desired_position", 100);
+            // always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *this, "Whether control input is always enabled (USE WITH CAUTION)");
 
             //
             // INTEGRATING INPUT & OUTPUT SCHEMES
             //
             // Getting the input device config from launch file parameters
-            const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *this, "Chosen input device config file");
+            declare_parameter("input_device_config", "dualshock4_mapping");
+            const std::string input_device_config_file = get_parameter("input_device_config").as_string();
+
+            // const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *this, "Chosen input device config file");
             // Creating a controller input -> associated joy message index number map from the input device config file
             std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
             std::string full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
             YAML::Node input_device = YAML::LoadFile(full_path);
             // Getting the input device name and printing it to the serial
             const std::string device_name = input_device["name"].as<string>();
-            RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), ("Currently using the " + device_name + " input device").c_str());
+            // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), ("Currently using the " + device_name + " input device").c_str());
             // Creating the button map from the input device config file
             std::map<std::string, int> button_map;
             for (const auto& it : input_device["mapping"])
@@ -382,66 +451,133 @@ class LifecyclePointStampedIncrNode : public rclcpp::Node
             }
             fresh_joy_state = false;
 
+        }
+
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+        on_configure(const rclcpp_lifecycle::State &)
+        {
+            //
+            // SUBSCRIBERS
+            //
+            joy_sub = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10, std::bind(&LifecyclePointStampedIncrNode::joy_callback, this, _1));
+
+            //
+            // PUBLISHERS
+            //
+            pntstmpd_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("desired_position", 100);
+            
             //
             // TIMER CALLBACK
             //
             timer_ = this->create_wall_timer(1.0s/pub_frequency, std::bind(&LifecyclePointStampedIncrNode::timer_callback, this));
+
+            // Succesful transition
+            RCLCPP_INFO(get_logger(), "on_configure() is called.");
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
+        }
+
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+        on_activate(const rclcpp_lifecycle::State & state)
+        {
+            LifecycleNode::on_activate(state);
+            RCUTILS_LOG_INFO_NAMED("lifecycle_point_stamped_incr", "on_activate() is called.");
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
+        }
+
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+        on_cleanup(const rclcpp_lifecycle::State &)
+        {
+            timer_.reset();
+            pntstmpd_pub.reset();
+            joy_sub.reset();
+
+            RCUTILS_LOG_INFO_NAMED("lifecycle_point_stamped_incr", "on cleanup is called.");
+
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
+        }
+
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+        on_shutdown(const rclcpp_lifecycle::State & state)
+        {
+            // In our shutdown phase, we release the shared pointers to the
+            // timer and publisher. These entities are no longer available
+            // and our node is "clean".
+            timer_.reset();
+            pntstmpd_pub.reset();
+            joy_sub.reset();
+
+            RCUTILS_LOG_INFO_NAMED(
+            "lifecycle_point_stamped_incr",
+            "on shutdown is called from state %s.",
+            state.label().c_str());
+
+            // We return a success and hence invoke the transition to the next
+            // step: "finalized".
+            // If we returned TRANSITION_CALLBACK_FAILURE instead, the state machine
+            // would stay in the current state.
+            // In case of TRANSITION_CALLBACK_ERROR or any thrown exception within
+            // this callback, the state machine transitions to state "errorprocessing".
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
         }
         
         void timer_callback()
         {
-            // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TESTING");
-            rclcpp::Time current_time = rclcpp::Clock().now();
-
-            if (fresh_joy_state == true)
+            if(pntstmpd_pub->is_activated())
             {
-                // If frequency set to 0, then only publishes messages when a new joy message is received
-                // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TEST 0");
-                if (is_joy_freq)
+                // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TESTING");
+                rclcpp::Time current_time = rclcpp::Clock().now();
+
+                if (fresh_joy_state == true)
                 {
-                    // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TEST 1");
-                    fresh_joy_state = false;
-                }
-
-                if(control_enabled(enable_input))
-                {
-                    // Reading the raw PointStamped commands
-
-                    alt_enabled(alt_input);
-
-                    // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TEST 2");
-
-                    command = x_axis_inc(x_inc_input, command);
-                    command = x_axis_dec(x_dec_input, command);
-                    command = y_axis_inc(y_inc_input, command);
-                    command = y_axis_dec(y_dec_input, command);
-                    command = z_axis_inc(z_inc_input, command);
-                    command = z_axis_dec(z_dec_input, command);
-                    command = axes_reset(reset_input, command);
-
-                    // Implementing spherical positional boundary modifier
-                    // Make sure the robot's position is constrained to the desired spherical space
-                    if (boundary_radius != 0.0)
+                    // If frequency set to 0, then only publishes messages when a new joy message is received
+                    // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TEST 0");
+                    if (is_joy_freq)
                     {
-                        // Find the robot's desired distance from home sqrd
-                        float distance_from_home_sqrd = pow(command.point.x, 2) + pow(command.point.y, 2) + pow(command.point.z, 2);
-                        // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
-                        if (distance_from_home_sqrd > pow(boundary_radius, 2))
+                        // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TEST 1");
+                        fresh_joy_state = false;
+                    }
+
+                    if(control_enabled(enable_input))
+                    {
+                        // Reading the raw PointStamped commands
+
+                        alt_enabled(alt_input);
+
+                        // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TEST 2");
+
+                        command = x_axis_inc(x_inc_input, command);
+                        command = x_axis_dec(x_dec_input, command);
+                        command = y_axis_inc(y_inc_input, command);
+                        command = y_axis_dec(y_dec_input, command);
+                        command = z_axis_inc(z_inc_input, command);
+                        command = z_axis_dec(z_dec_input, command);
+                        command = axes_reset(reset_input, command);
+
+                        // Implementing spherical positional boundary modifier
+                        // Make sure the robot's position is constrained to the desired spherical space
+                        if (boundary_radius != 0.0)
                         {
-                            command = normalize_pntstmp(command, boundary_radius);
+                            // Find the robot's desired distance from home sqrd
+                            float distance_from_home_sqrd = pow(command.point.x, 2) + pow(command.point.y, 2) + pow(command.point.z, 2);
+                            // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
+                            if (distance_from_home_sqrd > pow(boundary_radius, 2))
+                            {
+                                command = normalize_pntstmp(command, boundary_radius);
+                            }
                         }
                     }
+
+                    // Adjust command so that it is offset as desired
+                    geometry_msgs::msg::PointStamped offset_cmd = add_pntstmp(command, offset_command());
+
+                    offset_cmd.header.stamp = current_time;
+                    pntstmpd_pub->publish(offset_cmd);
                 }
-
-                // Adjust command so that it is offset as desired
-                geometry_msgs::msg::PointStamped offset_cmd = add_pntstmp(command, offset_command());
-
-                offset_cmd.header.stamp = current_time;
-                pntstmpd_pub->publish(offset_cmd);
             }
         }
+
         rclcpp::TimerBase::SharedPtr timer_;
-        rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pntstmpd_pub;
+        rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PointStamped>::SharedPtr pntstmpd_pub;
 
         void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state) const
         {
@@ -454,9 +590,29 @@ class LifecyclePointStampedIncrNode : public rclcpp::Node
 
 int main(int argc, char * argv[])
 {
+    // rclcpp::init(argc, argv);
+    // rclcpp::spin(std::make_shared<LifecyclePointStampedIncrNode>());
+    // rclcpp::shutdown();
+    // return 0;
+
+    // force flush of the stdout buffer.
+    // this ensures a correct sync of all prints
+    // even when executed simultaneously within the launch file.
+
+    setvbuf(stdout, NULL, _IONBF, BUFSIZ);
+
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<LifecyclePointStampedIncrNode>());
+
+    rclcpp::executors::SingleThreadedExecutor exe;
+
+    std::shared_ptr<LifecyclePointStampedIncrNode> lc_node = std::make_shared<LifecyclePointStampedIncrNode>();
+
+    exe.add_node(lc_node->get_node_base_interface());
+
+    exe.spin();
+
     rclcpp::shutdown();
+
     return 0;
 }
 
