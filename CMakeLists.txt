@@ -12,15 +12,17 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rosbag2_interfaces REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
+find_package(lifecycle_msgs REQUIRED)
 
 ###########
 ## Build ##
 ###########
 
-ament_export_dependencies(rclcpp geometry_msgs sensor_msgs rosbag2_interfaces)
+# ament_export_dependencies(rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle)
 
 set(UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES
-  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces
+  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
 )
 set(UNIFIED_TELEOP_TARGET_LINK_LIBRARIES
   cmakeme_flags yaml-cpp
@@ -83,6 +85,20 @@ target_link_libraries(${PROJECT_NAME}_twist_merger
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
+# lifecycle_point_stamped_incr
+add_executable(${PROJECT_NAME}_lifecycle_point_stamped_incr src/lifecycle_point_stamped_incr.cpp)
+set_target_properties(${PROJECT_NAME}_point_stamped_incr
+  PROPERTIES
+  OUTPUT_NAME lifecycle_point_stamped_incr
+  PREFIX ""
+)
+ament_target_dependencies(${PROJECT_NAME}_lifecycle_point_stamped_incr
+  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+)
+target_link_libraries(${PROJECT_NAME}_lifecycle_point_stamped_incr
+  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+)
+
 # # integration_test
 # add_executable(${PROJECT_NAME}_integration_test_node test/integration_test_node.cpp)
 # set_target_properties(${PROJECT_NAME}_integration_test_node
@@ -123,6 +139,11 @@ install(TARGETS
 
 install(TARGETS
   ${PROJECT_NAME}_twist_merger
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS
+  ${PROJECT_NAME}_lifecycle_point_stamped_incr
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
