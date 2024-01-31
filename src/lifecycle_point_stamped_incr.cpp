@@ -364,11 +364,7 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
             // x_max = rosnu::declare_and_get_param<float>("x_max", 1.0f, *this, "The maximum output value along that axis of movement");
             // y_max = rosnu::declare_and_get_param<float>("y_max", 1.0f, *this, "The maximum output value along that axis of movement");
             // z_max = rosnu::declare_and_get_param<float>("z_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            // alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
-            // alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
-            // alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *this, "The alternative maximum output value along that axis of movement");
-            // x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *this, "Whether the input for this movement should be flipped");
-            // y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *this, "Whether the input for this movement should be flipped");
+            // alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *this, "The alternative maximum output value along that axis of LifecyclePointStampedIncrNode
             // z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *this, "Whether the input for this movement should be flipped");
 
             // Modifier parameters

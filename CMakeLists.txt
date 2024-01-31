@@ -99,6 +99,20 @@ target_link_libraries(${PROJECT_NAME}_lifecycle_point_stamped_incr
   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
 )
 
+# lifecycle_twist_mirror
+add_executable(${PROJECT_NAME}_lifecycle_twist_mirror src/lifecycle_twist_mirror.cpp)
+set_target_properties(${PROJECT_NAME}_lifecycle_twist_mirror
+  PROPERTIES
+  OUTPUT_NAME lifecycle_twist_mirror
+  PREFIX ""
+)
+ament_target_dependencies(${PROJECT_NAME}_lifecycle_twist_mirror
+  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+)
+target_link_libraries(${PROJECT_NAME}_lifecycle_twist_mirror
+  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+)
+
 # # integration_test
 # add_executable(${PROJECT_NAME}_integration_test_node test/integration_test_node.cpp)
 # set_target_properties(${PROJECT_NAME}_integration_test_node
@@ -144,6 +158,11 @@ install(TARGETS
 
 install(TARGETS
   ${PROJECT_NAME}_lifecycle_point_stamped_incr
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS
+  ${PROJECT_NAME}_lifecycle_twist_mirror
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
