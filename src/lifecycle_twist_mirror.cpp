@@ -68,6 +68,20 @@
 #include <iostream>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
+// For Lifecycle Nodes
+#include <chrono>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <thread>
+#include <utility>
+#include "lifecycle_msgs/msg/transition.hpp"
+#include "rclcpp/publisher.hpp"
+#include "rclcpp_lifecycle/lifecycle_node.hpp"
+#include "rclcpp_lifecycle/lifecycle_publisher.hpp"
+#include "rcutils/logging_macros.h"
+#include "std_msgs/msg/string.hpp"
+
 using std::string;
 
 static geometry_msgs::msg::Twist command, p_cmd, old_p_cmd;
@@ -235,9 +249,9 @@ static InputType input_type(std::string input_name);
 /// @param map - The button mapping based on the input device config file
 static MovementInput function_input(std::string input_assignment, std::map<std::string, int> map);
 
-/// @brief Handler for a joy message
-/// @param joy_state - The state of the inputs of the controller
-static void joy_callback(const sensor_msgs::msg::Joy & joy_state);
+// /// @brief Handler for a joy message
+// /// @param joy_state - The state of the inputs of the controller
+// static void joy_callback(const sensor_msgs::msg::Joy & joy_state);
 
 /// @brief Returns true if control inputs are enabled based on controller input
 /// @param input - The controller input that will enable this function
@@ -337,160 +351,516 @@ static geometry_msgs::msg::Twist add_twist(geometry_msgs::msg::Twist add1, geome
 /// @param input_command - The Twist message that will be rounded
 static geometry_msgs::msg::Twist round_twist(geometry_msgs::msg::Twist input_command);
 
+using namespace std::chrono_literals;
+using std::placeholders::_1;
+
+class LifecycleTwistMirrorNode : public rclcpp_lifecycle::LifecycleNode
+{
+    public:
+        bool is_joy_freq;
+        double pub_frequency;
+        MovementInput enable_input;
+        MovementInput reset_input;
+        MovementInput alt_input;
+        MovementInput x_inc_input;
+        MovementInput x_dec_input;
+        MovementInput y_inc_input;
+        MovementInput y_dec_input;
+        MovementInput z_inc_input;
+        MovementInput z_dec_input;
+        MovementInput yaw_inc_input;
+        MovementInput yaw_dec_input;
+        MovementInput pitch_inc_input;
+        MovementInput pitch_dec_input;
+        MovementInput roll_inc_input;
+        MovementInput roll_dec_input;
+
+        LifecycleTwistMirrorNode(bool intra_process_comms = false) : LifecycleNode("lifecycle_twist_mirror",
+            rclcpp::NodeOptions().use_intra_process_comms(intra_process_comms))
+        {
+            //
+            // PARAMETERS
+            //
+            // Frequency of publisher
+            declare_parameter("frequency", 95.);
+            pub_frequency = get_parameter("frequency").as_double();
+            // double pub_frequency = rosnu::declare_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
+            // Function -> Controller input assignments from control scheme parameters
+            declare_parameter("enable_control", "UNUSED");
+            const std::string enable_assignment = get_parameter("enable_control").as_string();
+            declare_parameter("reset_enable", "UNUSED");
+            const std::string reset_assignment = get_parameter("reset_enable").as_string();
+            declare_parameter("alt_enable", "UNUSED");
+            const std::string alt_assignment = get_parameter("alt_enable").as_string();
+
+            declare_parameter("x_axis_inc", "UNUSED");
+            const std::string x_inc_assignment = get_parameter("x_axis_inc").as_string();
+            declare_parameter("x_axis_dec", "UNUSED");
+            const std::string x_dec_assignment = get_parameter("x_axis_dec").as_string();
+            declare_parameter("y_axis_inc", "UNUSED");
+            const std::string y_inc_assignment = get_parameter("y_axis_inc").as_string();
+            declare_parameter("y_axis_dec", "UNUSED");
+            const std::string y_dec_assignment = get_parameter("y_axis_dec").as_string();
+            declare_parameter("z_axis_inc", "UNUSED");
+            const std::string z_inc_assignment = get_parameter("z_axis_inc").as_string();
+            declare_parameter("z_axis_dec", "UNUSED");
+            const std::string z_dec_assignment = get_parameter("z_axis_dec").as_string();
+
+            declare_parameter("yaw_inc", "UNUSED");
+            const std::string yaw_inc_assignment = get_parameter("yaw_inc").as_string();
+            declare_parameter("yaw_dec", "UNUSED");
+            const std::string yaw_dec_assignment = get_parameter("yaw_dec").as_string();
+            declare_parameter("pitch_inc", "UNUSED");
+            const std::string pitch_inc_assignment = get_parameter("pitch_inc").as_string();
+            declare_parameter("pitch_dec", "UNUSED");
+            const std::string pitch_dec_assignment = get_parameter("pitch_dec").as_string();
+            declare_parameter("roll_inc", "UNUSED");
+            const std::string roll_inc_assignment = get_parameter("roll_inc").as_string();
+            declare_parameter("roll_dec", "UNUSED");
+            const std::string roll_dec_assignment = get_parameter("roll_dec").as_string();
+
+            // Additional parameters
+            declare_parameter("x_max", 1.);
+            x_max = get_parameter("x_max").as_double();
+            declare_parameter("y_max", 1.);
+            y_max = get_parameter("y_max").as_double();
+            declare_parameter("z_max", 1.);
+            z_max = get_parameter("z_max").as_double();
+            declare_parameter("alt_x_max", 0.25);
+            alt_x_max = get_parameter("alt_x_max").as_double();
+            declare_parameter("alt_y_max", 0.25);
+            alt_y_max = get_parameter("alt_y_max").as_double();
+            declare_parameter("alt_z_max", 0.25);
+            alt_z_max = get_parameter("alt_z_max").as_double();
+            declare_parameter("x_flip", false);
+            x_flip = get_parameter("x_flip").as_bool();
+            declare_parameter("y_flip", false);
+            y_flip = get_parameter("y_flip").as_bool();
+            declare_parameter("z_flip", false);
+            z_flip = get_parameter("z_flip").as_bool();
+
+            declare_parameter("yaw_max", 1.);
+            yaw_max = get_parameter("yaw_max").as_double();
+            declare_parameter("pitch_max", 1.);
+            pitch_max = get_parameter("pitch_max").as_double();
+            declare_parameter("roll_max", 1.);
+            roll_max = get_parameter("roll_max").as_double();
+            declare_parameter("alt_yaw_max", 0.25);
+            alt_yaw_max = get_parameter("alt_yaw_max").as_double();
+            declare_parameter("alt_pitch_max", 0.25);
+            alt_pitch_max = get_parameter("alt_pitch_max").as_double();
+            declare_parameter("alt_roll_max", 0.25);
+            alt_roll_max = get_parameter("alt_roll_max").as_double();
+            declare_parameter("yaw_flip", false);
+            yaw_flip = get_parameter("yaw_flip").as_bool();
+            declare_parameter("pitch_flip", false);
+            pitch_flip = get_parameter("pitch_flip").as_bool();
+            declare_parameter("roll_flip", false);
+            roll_flip = get_parameter("roll_flip").as_bool();
+
+            // Modifier parameters
+            declare_parameter("lin_rate_chg_fac", 0.);
+            lin_rate_chg_fac = get_parameter("lin_rate_chg_fac").as_double();
+            // if (lin_rate_chg_fac == 0.0) // lin_rate_chg_fac cannot be 0.0
+            // {
+            //     lin_rate_chg_fac = 1.0;
+            // }
+
+            declare_parameter("ang_rate_chg_fac", 0.);
+            ang_rate_chg_fac = get_parameter("ang_rate_chg_fac").as_double();
+            // if (ang_rate_chg_fac == 0.0) // ang_rate_chg_fac cannot be 0.0
+            // {
+            //     ang_rate_chg_fac = 1.0;
+            // }
+
+            declare_parameter("x_offset", 0.);
+            x_offset = get_parameter("x_offset").as_double();
+            declare_parameter("y_offset", 0.);
+            y_offset = get_parameter("y_offset").as_double();
+            declare_parameter("z_offset", 0.);
+            z_offset = get_parameter("z_offset").as_double();
+            declare_parameter("yaw_offset", 0.);
+            yaw_offset = get_parameter("yaw_offset").as_double();
+            declare_parameter("pitch_offset", 0.);
+            pitch_offset = get_parameter("pitch_offset").as_double();
+            declare_parameter("roll_offset", 0.);
+            roll_offset = get_parameter("roll_offset").as_double();
+
+
+            declare_parameter("always_enable", false);
+            always_enable = get_parameter("always_enable").as_bool();
+
+            //
+            // INTEGRATING INPUT & OUTPUT SCHEMES
+            //
+            // Getting the input device config from launch file parameters
+            declare_parameter("input_device_config", "dualshock4_mapping");
+            const std::string input_device_config_file = get_parameter("input_device_config").as_string();
+
+            // const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *this, "Chosen input device config file");
+            // Creating a controller input -> associated joy message index number map from the input device config file
+            std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
+            std::string full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
+            YAML::Node input_device = YAML::LoadFile(full_path);
+            // Getting the input device name and printing it to the serial
+            const std::string device_name = input_device["name"].as<string>();
+            // RCLCPP_INFO(rclcpp::get_logger("lifecycle_twist_mirror"), ("Currently using the " + device_name + " input device").c_str());
+            // Creating the button map from the input device config file
+            std::map<std::string, int> button_map;
+            for (const auto& it : input_device["mapping"])
+            {
+                button_map[it.first.as<std::string>()] = it.second.as<int>();
+            }
+
+            // Creating MovementInputs from the retrieved input assignments parameters and created button mapping
+            enable_input = function_input(enable_assignment, button_map);
+            alt_input = function_input(alt_assignment, button_map);
+            x_inc_input = function_input(x_inc_assignment, button_map);
+            x_dec_input = function_input(x_dec_assignment, button_map);
+            y_inc_input = function_input(y_inc_assignment, button_map);
+            y_dec_input = function_input(y_dec_assignment, button_map);
+            z_inc_input = function_input(z_inc_assignment, button_map);
+            z_dec_input = function_input(z_dec_assignment, button_map);
+            yaw_inc_input = function_input(yaw_inc_assignment, button_map);
+            yaw_dec_input = function_input(yaw_dec_assignment, button_map);
+            pitch_inc_input = function_input(pitch_inc_assignment, button_map);
+            pitch_dec_input = function_input(pitch_dec_assignment, button_map);
+            roll_inc_input = function_input(roll_inc_assignment, button_map);
+            roll_dec_input = function_input(roll_dec_assignment, button_map);
+            
+            //
+            // INITIALIZING VARIABLES
+            //
+            command = zero_command();
+            p_cmd = command;
+            old_p_cmd = p_cmd;
+        }
+
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+        on_configure(const rclcpp_lifecycle::State &)
+        {
+            //
+            // SUBSCRIBERS
+            //
+            joy_sub = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10, std::bind(&LifecycleTwistMirrorNode::joy_callback, this, _1));
+
+            //
+            // PUBLISHERS
+            //
+            cmdvel_pos_pub = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 100);
+            
+            //
+            // TIMER CALLBACK
+            //
+            timer_ = this->create_wall_timer(1.0s/pub_frequency, std::bind(&LifecycleTwistMirrorNode::timer_callback, this));
+
+            // Succesful transition
+            RCLCPP_INFO(get_logger(), "on_configure() is called.");
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
+        }
+
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+        on_activate(const rclcpp_lifecycle::State & state)
+        {
+            LifecycleNode::on_activate(state);
+            RCUTILS_LOG_INFO_NAMED("lifecycle_twist_mirror", "on_activate() is called.");
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
+        }
+
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+        on_cleanup(const rclcpp_lifecycle::State &)
+        {
+            timer_.reset();
+            cmdvel_pos_pub.reset();
+            joy_sub.reset();
+
+            RCUTILS_LOG_INFO_NAMED("lifecycle_twist_mirror", "on cleanup is called.");
+
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
+        }
+
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+        on_shutdown(const rclcpp_lifecycle::State & state)
+        {
+            // In our shutdown phase, we release the shared pointers to the
+            // timer and publisher. These entities are no longer available
+            // and our node is "clean".
+            timer_.reset();
+            cmdvel_pos_pub.reset();
+            joy_sub.reset();
+
+            RCUTILS_LOG_INFO_NAMED(
+            "lifecycle_twist_mirror",
+            "on shutdown is called from state %s.",
+            state.label().c_str());
+
+            // We return a success and hence invoke the transition to the next
+            // step: "finalized".
+            // If we returned TRANSITION_CALLBACK_FAILURE instead, the state machine
+            // would stay in the current state.
+            // In case of TRANSITION_CALLBACK_ERROR or any thrown exception within
+            // this callback, the state machine transitions to state "errorprocessing".
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
+        }
+
+        void timer_callback()
+        {
+            if(cmdvel_pos_pub->is_activated())
+            {
+                // RCLCPP_INFO(rclcpp::get_logger("lifecycle_twist_mirror"), "TESTING 0");
+                rclcpp::Time current_time = rclcpp::Clock().now();
+
+                if(fresh_joy_state)
+                {
+                    // RCLCPP_INFO(rclcpp::get_logger("lifecycle_twist_mirror"), "TESTING 1");
+                    command = zero_command();
+
+                    if(control_enabled(enable_input))
+                    {
+                        // Reading the raw Twist commands
+
+                        // RCLCPP_INFO(rclcpp::get_logger("lifecycle_twist_mirror"), "TESTING 2");
+
+                        alt_enabled(alt_input);
+                        command = x_axis_inc(x_inc_input, command);
+                        command = x_axis_dec(x_dec_input, command);
+                        command = y_axis_inc(y_inc_input, command);
+                        command = y_axis_dec(y_dec_input, command);
+                        command = z_axis_inc(z_inc_input, command);
+                        command = z_axis_dec(z_dec_input, command);
+
+                        command = yaw_inc(yaw_inc_input, command);
+                        command = yaw_dec(yaw_dec_input, command);
+                        // RCLCPP_INFO(get_logger(), "COMMAND VAL: %f", static_cast<float>(command.angular.z));
+                        command = pitch_inc(pitch_inc_input, command);
+                        command = pitch_dec(pitch_dec_input, command);
+                        command = roll_inc(roll_inc_input, command);
+                        command = roll_dec(roll_dec_input, command);
+
+                        command = flip_movement(command);
+                        // RCLCPP_INFO(get_logger(), "COMMAND VAL: %f", static_cast<float>(command.linear.x));
+
+                        // RCLCPP_INFO(rclcpp::get_logger("lifecycle_twist_mirror"), "TESTING 3");
+
+                        // Implementing rate of change modifier
+                        // Get the diff between curr and new
+                        geometry_msgs::msg::Twist diff_twist = subtract_twist(command, p_cmd);
+                        // Adjust the diff so that it's within the set rate_of_change
+                        geometry_msgs::msg::Twist adjusted_diff = normalize_twist(diff_twist, rate_of_change * lin_rate_chg_fac, rate_of_change * ang_rate_chg_fac);
+                        // Increment it on the new processed command
+                        p_cmd = add_twist(p_cmd, adjusted_diff);
+                    }
+                    else
+                    {
+                        p_cmd = command;
+                    }
+
+                    old_p_cmd = p_cmd;
+
+                    // Adjust command so that it is offset as desired
+                    geometry_msgs::msg::Twist offset_cmd = add_twist(p_cmd, offset_command());
+                    // Round the values of the message so that it does not sporadically change
+                    offset_cmd = round_twist(offset_cmd);
+
+                    cmdvel_pos_pub->publish(offset_cmd);
+                }
+            }
+        }
+
+        void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state) const
+        {
+            latest_joy_state = *joy_state;
+            fresh_joy_state = true;
+        }
+
+        rclcpp::TimerBase::SharedPtr timer_;
+        rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::Twist>::SharedPtr cmdvel_pos_pub;
+        rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub;
+
+};
+
 int main(int argc, char * argv[])
 {
-    // ROS
+    // rclcpp::init(argc, argv);
+    // rclcpp::spin(std::make_shared<LifecycleTwistMirrorNode>());
+    // rclcpp::shutdown();
+    // return 0;
+
+    // force flush of the stdout buffer.
+    // this ensures a correct sync of all prints
+    // even when executed simultaneously within the launch file.
+
+    setvbuf(stdout, NULL, _IONBF, BUFSIZ);
+
     rclcpp::init(argc, argv);
-    auto node = rclcpp::Node::make_shared("twist_mirror");
-    rclcpp::Rate rate(1000); // ROS Rate at 1000Hz
 
-    // Subscriber
-    auto joy_sub = node->create_subscription<sensor_msgs::msg::Joy>("joy", 10, joy_callback);
+    rclcpp::executors::SingleThreadedExecutor exe;
 
-    // Publisher
-    auto cmdvel_pos_pub = node->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 100); // puhlishing rate has to be 100
-    
-    //
-    // Declaring and getting parameters
-    //
-    // Function -> Controller input assignments from control scheme parameters
-    const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *node, "Button assigned to enable control inputs");
-    const std::string alt_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *node, "Button assigned to activate alternative max values");
-    const std::string x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *node, "Button assigned to increase the x-axis value of the robot");
-    const std::string x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *node, "Button assigned to decrease the x-axis value of the robot");
-    const std::string y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *node, "Button assigned to increase the y-axis value of the robot");
-    const std::string y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *node, "Button assigned to decrease the y-axis value of the robot");
-    const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *node, "Button assigned to increase the z-axis value of the robot");
-    const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *node, "Button assigned to decrease the z-axis value of the robot");
-    const std::string yaw_inc_assignment = rosnu::declare_and_get_param<std::string>("yaw_inc", "UNUSED", *node, "Button assigned to increase the yaw value of the robot");
-    const std::string yaw_dec_assignment = rosnu::declare_and_get_param<std::string>("yaw_dec", "UNUSED", *node, "Button assigned to decrease the yaw value of the robot");
-    const std::string pitch_inc_assignment = rosnu::declare_and_get_param<std::string>("pitch_inc", "UNUSED", *node, "Button assigned to increase the pitch value of the robot");
-    const std::string pitch_dec_assignment = rosnu::declare_and_get_param<std::string>("pitch_dec", "UNUSED", *node, "Button assigned to decrease the pitch value of the robot");
-    const std::string roll_inc_assignment = rosnu::declare_and_get_param<std::string>("roll_inc", "UNUSED", *node, "Button assigned to increase the roll value of the robot");
-    const std::string roll_dec_assignment = rosnu::declare_and_get_param<std::string>("roll_dec", "UNUSED", *node, "Button assigned to decrease the roll value of the robot");
-    // Additional parameters
-    x_max = rosnu::declare_and_get_param<float>("x_max", 1.0f, *node, "The maximum output value along that axis of movement");
-    y_max = rosnu::declare_and_get_param<float>("y_max", 1.0f, *node, "The maximum output value along that axis of movement");
-    z_max = rosnu::declare_and_get_param<float>("z_max", 1.0f, *node, "The maximum output value along that axis of movement");
-    yaw_max = rosnu::declare_and_get_param<float>("yaw_max", 1.0f, *node, "The maximum output value along that axis of movement");
-    pitch_max = rosnu::declare_and_get_param<float>("pitch_max", 1.0f, *node, "The maximum output value along that axis of movement");
-    roll_max = rosnu::declare_and_get_param<float>("roll_max", 1.0f, *node, "The maximum output value along that axis of movement");
-    alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
-    alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
-    alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
-    alt_yaw_max = rosnu::declare_and_get_param<float>("alt_yaw_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
-    alt_pitch_max = rosnu::declare_and_get_param<float>("alt_pitch_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
-    alt_roll_max = rosnu::declare_and_get_param<float>("alt_roll_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
-    x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *node, "Whether the input for this movement should be flipped");
-    y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *node, "Whether the input for this movement should be flipped");
-    z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *node, "Whether the input for this movement should be flipped");
-    yaw_flip = rosnu::declare_and_get_param<bool>("yaw_flip", false, *node, "Whether the input for this movement should be flipped");
-    pitch_flip = rosnu::declare_and_get_param<bool>("pitch_flip", false, *node, "Whether the input for this movement should be flipped");
-    roll_flip = rosnu::declare_and_get_param<bool>("roll_flip", false, *node, "Whether the input for this movement should be flipped");
-    // Modifier parameters
-    lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's linear values");
-    ang_rate_chg_fac = rosnu::declare_and_get_param<float>("ang_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's angular values");
-    x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *node, "The offset for the message's zero value");
-    y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *node, "The offset for the message's zero value");
-    z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *node, "The offset for the message's zero value");
-    yaw_offset = rosnu::declare_and_get_param<float>("yaw_offset", 0.0f, *node, "The offset for the message's zero value");
-    pitch_offset = rosnu::declare_and_get_param<float>("pitch_offset", 0.0f, *node, "The offset for the message's zero value");
-    roll_offset = rosnu::declare_and_get_param<float>("roll_offset", 0.0f, *node, "The offset for the message's zero value");
-    // Whether control input is ALWAYS enabled
-    always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *node, "Whether control input is always enabled (USE WITH CAUTION)");
-    // Getting the input device config from launch file parameters
-    const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *node, "Chosen input device config file");
-    
-    // Creating a controller input -> associated joy message index number map from the input device config file
-    std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
-    std::string full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
-    YAML::Node input_device = YAML::LoadFile(full_path);
-    // Getting the input device name and printing it to the serial
-    const std::string device_name = input_device["name"].as<string>();
-    RCLCPP_INFO(rclcpp::get_logger("twist_mirror"), ("Currently using the " + device_name + " input device").c_str());
-    // Creating the button map from the input device config file
-    std::map<std::string, int> button_map;
-    for (const auto& it : input_device["mapping"])
-    {
-        button_map[it.first.as<std::string>()] = it.second.as<int>();
-    }
-    
-    // Creating MovementInputs from the retrieved input assignments parameters and created button mapping
-    MovementInput enable_input = function_input(enable_assignment, button_map);
-    MovementInput alt_input = function_input(alt_assignment, button_map);
-    MovementInput x_inc_input = function_input(x_inc_assignment, button_map);
-    MovementInput x_dec_input = function_input(x_dec_assignment, button_map);
-    MovementInput y_inc_input = function_input(y_inc_assignment, button_map);
-    MovementInput y_dec_input = function_input(y_dec_assignment, button_map);
-    MovementInput z_inc_input = function_input(z_inc_assignment, button_map);
-    MovementInput z_dec_input = function_input(z_dec_assignment, button_map);
-    MovementInput yaw_inc_input = function_input(yaw_inc_assignment, button_map);
-    MovementInput yaw_dec_input = function_input(yaw_dec_assignment, button_map);
-    MovementInput pitch_inc_input = function_input(pitch_inc_assignment, button_map);
-    MovementInput pitch_dec_input = function_input(pitch_dec_assignment, button_map);
-    MovementInput roll_inc_input = function_input(roll_inc_assignment, button_map);
-    MovementInput roll_dec_input = function_input(roll_dec_assignment, button_map);
+    std::shared_ptr<LifecycleTwistMirrorNode> lc_node = std::make_shared<LifecycleTwistMirrorNode>();
 
-    command = zero_command();
-    p_cmd = command;
-    old_p_cmd = p_cmd;
-    
-    // Control loop
-    while (rclcpp::ok())
-    {
-        rclcpp::Time current_time = rclcpp::Clock().now();
+    exe.add_node(lc_node->get_node_base_interface());
 
-        if(fresh_joy_state)
-        {
-            command = zero_command();
+    exe.spin();
 
-            if(control_enabled(enable_input))
-            {
-                // Reading the raw Twist commands
+    rclcpp::shutdown();
 
-                alt_enabled(alt_input);
-                command = x_axis_inc(x_inc_input, command);
-                command = x_axis_dec(x_dec_input, command);
-                command = y_axis_inc(y_inc_input, command);
-                command = y_axis_dec(y_dec_input, command);
-                command = z_axis_inc(z_inc_input, command);
-                command = z_axis_dec(z_dec_input, command);
-
-                command = yaw_inc(yaw_inc_input, command);
-                command = yaw_dec(yaw_dec_input, command);
-                command = pitch_inc(pitch_inc_input, command);
-                command = pitch_dec(pitch_dec_input, command);
-                command = roll_inc(roll_inc_input, command);
-                command = roll_dec(roll_dec_input, command);
-
-                command = flip_movement(command);
-
-                // Implementing rate of change modifier
-                // Get the diff between curr and new
-                geometry_msgs::msg::Twist diff_twist = subtract_twist(command, p_cmd);
-                // Adjust the diff so that it's within the set rate_of_change
-                geometry_msgs::msg::Twist adjusted_diff = normalize_twist(diff_twist, rate_of_change * lin_rate_chg_fac, rate_of_change * ang_rate_chg_fac);
-                // Increment it on the new processed command
-                p_cmd = add_twist(p_cmd, adjusted_diff);
-            }
-            else
-            {
-                p_cmd = command;
-            }
-
-            old_p_cmd = p_cmd;
-
-            // Adjust command so that it is offset as desired
-            geometry_msgs::msg::Twist offset_cmd = add_twist(p_cmd, offset_command());
-            // Round the values of the message so that it does not sporadically change
-            offset_cmd = round_twist(offset_cmd);
-
-            cmdvel_pos_pub->publish(offset_cmd);
-        }
-        rclcpp::spin_some(node);
-    }
     return 0;
 }
+
+// int main(int argc, char * argv[])
+// {
+//     // ROS
+//     rclcpp::init(argc, argv);
+//     auto node = rclcpp::Node::make_shared("twist_mirror");
+//     rclcpp::Rate rate(1000); // ROS Rate at 1000Hz
+
+//     // Subscriber
+//     auto joy_sub = node->create_subscription<sensor_msgs::msg::Joy>("joy", 10, joy_callback);
+
+//     // Publisher
+//     auto cmdvel_pos_pub = node->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 100); // puhlishing rate has to be 100
+    
+//     //
+//     // Declaring and getting parameters
+//     //
+//     // Function -> Controller input assignments from control scheme parameters
+//     const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *node, "Button assigned to enable control inputs");
+//     const std::string alt_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *node, "Button assigned to activate alternative max values");
+//     const std::string x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *node, "Button assigned to increase the x-axis value of the robot");
+//     const std::string x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *node, "Button assigned to decrease the x-axis value of the robot");
+//     const std::string y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *node, "Button assigned to increase the y-axis value of the robot");
+//     const std::string y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *node, "Button assigned to decrease the y-axis value of the robot");
+//     const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *node, "Button assigned to increase the z-axis value of the robot");
+//     const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *node, "Button assigned to decrease the z-axis value of the robot");
+//     const std::string yaw_inc_assignment = rosnu::declare_and_get_param<std::string>("yaw_inc", "UNUSED", *node, "Button assigned to increase the yaw value of the robot");
+//     const std::string yaw_dec_assignment = rosnu::declare_and_get_param<std::string>("yaw_dec", "UNUSED", *node, "Button assigned to decrease the yaw value of the robot");
+//     const std::string pitch_inc_assignment = rosnu::declare_and_get_param<std::string>("pitch_inc", "UNUSED", *node, "Button assigned to increase the pitch value of the robot");
+//     const std::string pitch_dec_assignment = rosnu::declare_and_get_param<std::string>("pitch_dec", "UNUSED", *node, "Button assigned to decrease the pitch value of the robot");
+//     const std::string roll_inc_assignment = rosnu::declare_and_get_param<std::string>("roll_inc", "UNUSED", *node, "Button assigned to increase the roll value of the robot");
+//     const std::string roll_dec_assignment = rosnu::declare_and_get_param<std::string>("roll_dec", "UNUSED", *node, "Button assigned to decrease the roll value of the robot");
+//     // Additional parameters
+//     x_max = rosnu::declare_and_get_param<float>("x_max", 1.0f, *node, "The maximum output value along that axis of movement");
+//     y_max = rosnu::declare_and_get_param<float>("y_max", 1.0f, *node, "The maximum output value along that axis of movement");
+//     z_max = rosnu::declare_and_get_param<float>("z_max", 1.0f, *node, "The maximum output value along that axis of movement");
+//     yaw_max = rosnu::declare_and_get_param<float>("yaw_max", 1.0f, *node, "The maximum output value along that axis of movement");
+//     pitch_max = rosnu::declare_and_get_param<float>("pitch_max", 1.0f, *node, "The maximum output value along that axis of movement");
+//     roll_max = rosnu::declare_and_get_param<float>("roll_max", 1.0f, *node, "The maximum output value along that axis of movement");
+//     alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+//     alt_y_max = rosnu::declare_and_get_param<float>("alt_y_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+//     alt_z_max = rosnu::declare_and_get_param<float>("alt_z_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+//     alt_yaw_max = rosnu::declare_and_get_param<float>("alt_yaw_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+//     alt_pitch_max = rosnu::declare_and_get_param<float>("alt_pitch_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+//     alt_roll_max = rosnu::declare_and_get_param<float>("alt_roll_max", 0.25f, *node, "The alternative maximum output value along that axis of movement");
+//     x_flip = rosnu::declare_and_get_param<bool>("x_flip", false, *node, "Whether the input for this movement should be flipped");
+//     y_flip = rosnu::declare_and_get_param<bool>("y_flip", false, *node, "Whether the input for this movement should be flipped");
+//     z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *node, "Whether the input for this movement should be flipped");
+//     yaw_flip = rosnu::declare_and_get_param<bool>("yaw_flip", false, *node, "Whether the input for this movement should be flipped");
+//     pitch_flip = rosnu::declare_and_get_param<bool>("pitch_flip", false, *node, "Whether the input for this movement should be flipped");
+//     roll_flip = rosnu::declare_and_get_param<bool>("roll_flip", false, *node, "Whether the input for this movement should be flipped");
+//     // Modifier parameters
+//     lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's linear values");
+//     ang_rate_chg_fac = rosnu::declare_and_get_param<float>("ang_rate_chg_fac", 0.0f, *node, "Factor to the rate of change for the output's angular values");
+//     x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *node, "The offset for the message's zero value");
+//     y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *node, "The offset for the message's zero value");
+//     z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *node, "The offset for the message's zero value");
+//     yaw_offset = rosnu::declare_and_get_param<float>("yaw_offset", 0.0f, *node, "The offset for the message's zero value");
+//     pitch_offset = rosnu::declare_and_get_param<float>("pitch_offset", 0.0f, *node, "The offset for the message's zero value");
+//     roll_offset = rosnu::declare_and_get_param<float>("roll_offset", 0.0f, *node, "The offset for the message's zero value");
+//     // Whether control input is ALWAYS enabled
+//     always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *node, "Whether control input is always enabled (USE WITH CAUTION)");
+//     // Getting the input device config from launch file parameters
+//     const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *node, "Chosen input device config file");
+    
+//     // Creating a controller input -> associated joy message index number map from the input device config file
+//     std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
+//     std::string full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
+//     YAML::Node input_device = YAML::LoadFile(full_path);
+//     // Getting the input device name and printing it to the serial
+//     const std::string device_name = input_device["name"].as<string>();
+//     RCLCPP_INFO(rclcpp::get_logger("twist_mirror"), ("Currently using the " + device_name + " input device").c_str());
+//     // Creating the button map from the input device config file
+//     std::map<std::string, int> button_map;
+//     for (const auto& it : input_device["mapping"])
+//     {
+//         button_map[it.first.as<std::string>()] = it.second.as<int>();
+//     }
+    
+//     // Creating MovementInputs from the retrieved input assignments parameters and created button mapping
+//     MovementInput enable_input = function_input(enable_assignment, button_map);
+//     MovementInput alt_input = function_input(alt_assignment, button_map);
+//     MovementInput x_inc_input = function_input(x_inc_assignment, button_map);
+//     MovementInput x_dec_input = function_input(x_dec_assignment, button_map);
+//     MovementInput y_inc_input = function_input(y_inc_assignment, button_map);
+//     MovementInput y_dec_input = function_input(y_dec_assignment, button_map);
+//     MovementInput z_inc_input = function_input(z_inc_assignment, button_map);
+//     MovementInput z_dec_input = function_input(z_dec_assignment, button_map);
+//     MovementInput yaw_inc_input = function_input(yaw_inc_assignment, button_map);
+//     MovementInput yaw_dec_input = function_input(yaw_dec_assignment, button_map);
+//     MovementInput pitch_inc_input = function_input(pitch_inc_assignment, button_map);
+//     MovementInput pitch_dec_input = function_input(pitch_dec_assignment, button_map);
+//     MovementInput roll_inc_input = function_input(roll_inc_assignment, button_map);
+//     MovementInput roll_dec_input = function_input(roll_dec_assignment, button_map);
+
+//     command = zero_command();
+//     p_cmd = command;
+//     old_p_cmd = p_cmd;
+    
+//     // Control loop
+//     while (rclcpp::ok())
+//     {
+//         rclcpp::Time current_time = rclcpp::Clock().now();
+
+//         if(fresh_joy_state)
+//         {
+//             command = zero_command();
+
+//             if(control_enabled(enable_input))
+//             {
+//                 // Reading the raw Twist commands
+
+//                 alt_enabled(alt_input);
+//                 command = x_axis_inc(x_inc_input, command);
+//                 command = x_axis_dec(x_dec_input, command);
+//                 command = y_axis_inc(y_inc_input, command);
+//                 command = y_axis_dec(y_dec_input, command);
+//                 command = z_axis_inc(z_inc_input, command);
+//                 command = z_axis_dec(z_dec_input, command);
+
+//                 command = yaw_inc(yaw_inc_input, command);
+//                 command = yaw_dec(yaw_dec_input, command);
+//                 command = pitch_inc(pitch_inc_input, command);
+//                 command = pitch_dec(pitch_dec_input, command);
+//                 command = roll_inc(roll_inc_input, command);
+//                 command = roll_dec(roll_dec_input, command);
+
+//                 command = flip_movement(command);
+
+//                 // Implementing rate of change modifier
+//                 // Get the diff between curr and new
+//                 geometry_msgs::msg::Twist diff_twist = subtract_twist(command, p_cmd);
+//                 // Adjust the diff so that it's within the set rate_of_change
+//                 geometry_msgs::msg::Twist adjusted_diff = normalize_twist(diff_twist, rate_of_change * lin_rate_chg_fac, rate_of_change * ang_rate_chg_fac);
+//                 // Increment it on the new processed command
+//                 p_cmd = add_twist(p_cmd, adjusted_diff);
+//             }
+//             else
+//             {
+//                 p_cmd = command;
+//             }
+
+//             old_p_cmd = p_cmd;
+
+//             // Adjust command so that it is offset as desired
+//             geometry_msgs::msg::Twist offset_cmd = add_twist(p_cmd, offset_command());
+//             // Round the values of the message so that it does not sporadically change
+//             offset_cmd = round_twist(offset_cmd);
+
+//             cmdvel_pos_pub->publish(offset_cmd);
+//         }
+//         rclcpp::spin_some(node);
+//     }
+//     return 0;
+// }
 
 static InputType input_type(const std::string input_name)
 {
@@ -621,6 +991,7 @@ static geometry_msgs::msg::Twist x_axis_inc(const MovementInput input, geometry_
             if (axis_reading != 0.0f)
             {
                 new_command.linear.x = curr_x_max * axis_reading;
+                // RCLCPP_INFO(rclcpp::get_logger("lifecycle_twist_mirror"), "TESTING 4");
             }
             break;
         case InputType::Trigger:
@@ -664,7 +1035,7 @@ static geometry_msgs::msg::Twist x_axis_dec(const MovementInput input, geometry_
         case InputType::Trigger:
             trigger_reading = (0.5 - (latest_joy_state.axes.at(input.index)/2.0));
             if (trigger_reading != 0.0f)
-            {
+            {RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TESTING CONSTRUCTOR");
                 new_command.linear.x = -1 * curr_x_max * trigger_reading;
             }
             break;
@@ -1071,12 +1442,6 @@ static geometry_msgs::msg::Twist flip_movement(geometry_msgs::msg::Twist temp_co
 
 
     return temp_command;
-}
-
-static void joy_callback(const sensor_msgs::msg::Joy & joy_state)
-{
-    latest_joy_state = joy_state;
-    fresh_joy_state = true;
 }
 
 static geometry_msgs::msg::Twist subtract_twist(geometry_msgs::msg::Twist subtracted, geometry_msgs::msg::Twist subtractor)
