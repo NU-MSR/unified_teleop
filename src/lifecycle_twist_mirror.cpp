@@ -568,6 +568,18 @@ class LifecycleTwistMirrorNode : public rclcpp_lifecycle::LifecycleNode
         }
 
         rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+        on_deactivate(const rclcpp_lifecycle::State & state)
+        {   
+            // Send zero command to mobile base so that it stops moving
+            command = zero_command();
+            cmdvel_pos_pub->publish(command);
+
+            LifecycleNode::on_deactivate(state);
+            RCUTILS_LOG_INFO_NAMED("lifecycle_twist_mirror", "on_deactivate() is called.");
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
+        }
+
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
         on_cleanup(const rclcpp_lifecycle::State &)
         {
             timer_.reset();
