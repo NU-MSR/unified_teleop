@@ -352,12 +352,12 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
             alt_y_max = get_parameter("alt_y_max").as_double();
             declare_parameter("alt_z_max", 0.);
             alt_z_max = get_parameter("alt_z_max").as_double();
-            declare_parameter("x_flip", 0.);
-            x_flip = get_parameter("x_flip").as_double();
-            declare_parameter("y_flip", 0.);
-            y_flip = get_parameter("y_flip").as_double();
-            declare_parameter("z_flip", 0.);
-            z_flip = get_parameter("z_flip").as_double();
+            declare_parameter("x_flip", false);
+            x_flip = get_parameter("x_flip").as_bool();
+            declare_parameter("y_flip", false);
+            y_flip = get_parameter("y_flip").as_bool();
+            declare_parameter("z_flip", false);
+            z_flip = get_parameter("z_flip").as_bool();
 
             // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TESTING PARAMETERS");
 
@@ -480,18 +480,18 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
             return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
         }
 
-        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
-        on_deactivate(const rclcpp_lifecycle::State & state)
-        {   
-            // Send zero command to mobile base so that it stops moving
-            command = zero_command();
-            command.header.stamp = rclcpp::Clock().now();
-            pntstmpd_pub->publish(command);
+        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+        // on_deactivate(const rclcpp_lifecycle::State & state)
+        // {   
+        //     // Send zero command to mobile base so that it stops moving
+        //     command = zero_command();
+        //     command.header.stamp = rclcpp::Clock().now();
+        //     pntstmpd_pub->publish(command);
 
-            LifecycleNode::on_deactivate(state);
-            RCUTILS_LOG_INFO_NAMED("lifecycle_point_stamped_incr", "on_deactivate() is called.");
-            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
-        }
+        //     LifecycleNode::on_deactivate(state);
+        //     RCUTILS_LOG_INFO_NAMED("lifecycle_point_stamped_incr", "on_deactivate() is called.");
+        //     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
+        // }
 
         rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
         on_cleanup(const rclcpp_lifecycle::State &)

@@ -494,7 +494,7 @@ class LifecycleTwistMirrorNode : public rclcpp_lifecycle::LifecycleNode
             // INTEGRATING INPUT & OUTPUT SCHEMES
             //
             // Getting the input device config from launch file parameters
-            declare_parameter("input_device_config", "dualshock4_mapping");
+            declare_parameter("input_device_config", "zhock4_mapping");
             const std::string input_device_config_file = get_parameter("input_device_config").as_string();
 
             // const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *this, "Chosen input device config file");
