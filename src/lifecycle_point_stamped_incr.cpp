@@ -73,9 +73,9 @@ static bool fresh_joy_state;
 static bool always_enable = false;
 static const float rate_of_change_denom = 1 * std::pow(10, 5); // USER CAN ADJUST, KEEP IT EXTREMELY SMALL
 
-float curr_x_max = 1.0;
-float curr_y_max = 1.0;
-float curr_z_max = 1.0;
+static float curr_x_max = 1.0;
+static float curr_y_max = 1.0;
+static float curr_z_max = 1.0;
 static float x_max;
 static float y_max;
 static float z_max;
@@ -83,7 +83,7 @@ static float alt_x_max;
 static float alt_y_max;
 static float alt_z_max;
 static float boundary_radius;
-float lin_rate_chg_fac;
+static float lin_rate_chg_fac;
 static float x_offset;
 static float y_offset;
 static float z_offset;
@@ -120,91 +120,6 @@ class MovementInput
         /// @param input_type The type of input.
         MovementInput(int index_no, InputType input_type) : index(index_no), type(input_type) {}
 };
-
-// /// Additional parameter helper functions developed my NU MSR
-// namespace rosnu
-// {
-//   /// @brief declare a parameter without a default value. If the value is not set externally,
-//   /// an exception will be thrown when trying to get_param for this parameter.
-//   /// @tparam T - type of the parameter
-//   /// @param name - name of the parameter
-//   /// @param node - node for which the parameter is declared
-//   /// @param desc - (optional) the parameter description
-//   /// @throw 
-//   ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
-//   ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
-//   template<class T>
-//   void declare_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
-//   {
-//     // init descriptor object and fill in description
-//     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-//     descriptor.description = desc;
-
-//     // declare parameter without a default value
-//     node.declare_parameter<T>(name, descriptor);
-//   }
-
-//   /// @brief declare a parameter with a default value.
-//   /// @tparam T - type of the parameter
-//   /// @param name - name of the parameter
-//   /// @param def - the default parameter value
-//   /// @param node - node for which the parameter is declared
-//   /// @param desc - (optional) the parameter description
-//   /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
-//   template<class T>
-//   void declare_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
-//   {
-//     // init descriptor object and fill in description
-//     auto descriptor = rcl_interfaces::msg::ParameterDescriptor{};
-//     descriptor.description = desc;
-    
-//     // declare node with default value
-//     node.declare_parameter<T>(name, def, descriptor);
-//   }
-
-//   /// @brief get the value of a parameter.
-//   /// @tparam T - type of the parameter
-//   /// @param name - name of the parameter
-//   /// @param node - node for which the parameter was declared
-//   /// @return value of the parameter
-//   /// @throw rclcpp::exceptions::ParameterNotDeclaredException if the parameter has not been declared
-//   template<class T>
-//   T get_param(const std::string & name, rclcpp::Node & node)
-//   {
-//     return node.get_parameter(name).get_parameter_value().get<T>();
-//   }
-  
-//   /// @brief declare a parameter without a default value and return the parameter value.
-//   /// @tparam T - type of the parameter
-//   /// @param name - name of the parameter
-//   /// @param node - node for which the parameter is declared
-//   /// @param desc - (optional) the parameter description
-//   /// @return value of the parameter
-//   /// @throw 
-//   ///   rclcpp::exceptions::ParameterAlreadyDeclaredException - if the parameter has already been declared
-//   ///   rclcpp::exceptions::UninitializedStaticallyTypedParameterException - if the parameter was not set when the node is run
-//   template<class T>
-//   T declare_and_get_param(const std::string & name, rclcpp::Node & node, const std::string & desc="")
-//   {
-//     declare_param<T>(name, node, desc);
-//     return get_param<T>(name, node);
-//   }
-
-//   /// @brief declare a parameter with a default value and return the parameter value.
-//   /// @tparam T - type of the parameter
-//   /// @param name - name of the parameter
-//   /// @param def - the default parameter value
-//   /// @param node - node for which the parameter is declared
-//   /// @param desc - (optional) the parameter description
-//   /// @return value of the parameter
-//   /// @throw rclcpp::exceptions::ParameterAlreadyDeclaredException if the parameter has already been declared
-//   template<class T>
-//   T declare_and_get_param(const std::string & name, const T & def, rclcpp::Node & node, const std::string & desc="")
-//   {
-//     declare_param<T>(name, def, node, desc);
-//     return get_param<T>(name, node);
-//   }
-// }
 
 /// @brief Returns the type of the input based on its name
 ///        (Axis if it begins with an 'a', Trigger if it begins with a 't', Button if it begins with a 'b', and None if the string is empty)
@@ -299,9 +214,7 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
 
         LifecyclePointStampedIncrNode(bool intra_process_comms = false) : LifecycleNode("lifecycle_point_stamped_incr",
             rclcpp::NodeOptions().use_intra_process_comms(intra_process_comms))
-        {
-            // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TESTING CONSTRUCTOR");
-            
+        {            
             //
             // PARAMETERS
             //
@@ -329,16 +242,6 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
             declare_parameter("z_axis_dec", "UNUSED");
             const std::string z_dec_assignment = get_parameter("z_axis_dec").as_string();
 
-            // const std::string enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *this, "Button assigned to enable control inputs");
-            // const std::string reset_assignment = rosnu::declare_and_get_param<std::string>("reset_enable", "UNUSED", *this, "Button assigned to reset robot position");
-            // const std::string alt_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *this, "Button assigned to activate alternative max values");
-            // const std::string x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *this, "Button assigned to increase the x-axis value of the robot");
-            // const std::string x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *this, "Button assigned to decrease the x-axis value of the robot");
-            // const std::string y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *this, "Button assigned to increase the y-axis value of the robot");
-            // const std::string y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *this, "Button assigned to decrease the y-axis value of the robot");
-            // const std::string z_inc_assignment = rosnu::declare_and_get_param<std::string>("z_axis_inc", "UNUSED", *this, "Button assigned to increase the z-axis value of the robot");
-            // const std::string z_dec_assignment = rosnu::declare_and_get_param<std::string>("z_axis_dec", "UNUSED", *this, "Button assigned to decrease the z-axis value of the robot");
-            
             // Additional parameters
             declare_parameter("x_max", 0.);
             x_max = get_parameter("x_max").as_double();
@@ -359,22 +262,11 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
             declare_parameter("z_flip", false);
             z_flip = get_parameter("z_flip").as_bool();
 
-            // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TESTING PARAMETERS");
-
-            // x_max = rosnu::declare_and_get_param<float>("x_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            // y_max = rosnu::declare_and_get_param<float>("y_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            // z_max = rosnu::declare_and_get_param<float>("z_max", 1.0f, *this, "The maximum output value along that axis of movement");
-            // alt_x_max = rosnu::declare_and_get_param<float>("alt_x_max", 0.25f, *this, "The alternative maximum output value along that axis of LifecyclePointStampedIncrNode
-            // z_flip = rosnu::declare_and_get_param<bool>("z_flip", false, *this, "Whether the input for this movement should be flipped");
-
             // Modifier parameters
             declare_parameter("boundary_radius", 0.);
             boundary_radius = get_parameter("boundary_radius").as_double();
             declare_parameter("lin_rate_chg_fac", 0.);
             lin_rate_chg_fac = get_parameter("lin_rate_chg_fac").as_double();
-
-            // boundary_radius = rosnu::declare_and_get_param<float>("boundary_radius", 0.0f, *this, "Radius of the spherical space around the zero position that the robot can move in");
-            // lin_rate_chg_fac = rosnu::declare_and_get_param<float>("lin_rate_chg_fac", 1.0f, *this, "The scale in which the movement speed is multiplied by along that axis of movement");
             
             if (lin_rate_chg_fac == 0.0) // lin_rate_chg_fac cannot be 0.0
             {
@@ -388,14 +280,10 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
             declare_parameter("z_offset", 0.);
             z_offset = get_parameter("z_offset").as_double();
 
-            // x_offset = rosnu::declare_and_get_param<float>("x_offset", 0.0f, *this, "The offset for the message's zero value");
-            // y_offset = rosnu::declare_and_get_param<float>("y_offset", 0.0f, *this, "The offset for the message's zero value");
-            // z_offset = rosnu::declare_and_get_param<float>("z_offset", 0.0f, *this, "The offset for the message's zero value");
             // Whether control input is ALWAYS enabled
             declare_parameter("always_enable", false);
             always_enable = get_parameter("always_enable").as_bool();
 
-            // always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *this, "Whether control input is always enabled (USE WITH CAUTION)");
 
             //
             // INTEGRATING INPUT & OUTPUT SCHEMES
@@ -404,14 +292,12 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
             declare_parameter("input_device_config", "dualshock4_mapping");
             const std::string input_device_config_file = get_parameter("input_device_config").as_string();
 
-            // const std::string input_device_config_file = rosnu::declare_and_get_param<std::string>("input_device_config", "dualshock4_mapping", *this, "Chosen input device config file");
             // Creating a controller input -> associated joy message index number map from the input device config file
             std::string pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
             std::string full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
             YAML::Node input_device = YAML::LoadFile(full_path);
             // Getting the input device name and printing it to the serial
             const std::string device_name = input_device["name"].as<string>();
-            // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), ("Currently using the " + device_name + " input device").c_str());
             // Creating the button map from the input device config file
             std::map<std::string, int> button_map;
             for (const auto& it : input_device["mapping"])
@@ -480,19 +366,6 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
             return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
         }
 
-        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
-        // on_deactivate(const rclcpp_lifecycle::State & state)
-        // {   
-        //     // Send zero command to mobile base so that it stops moving
-        //     command = zero_command();
-        //     command.header.stamp = rclcpp::Clock().now();
-        //     pntstmpd_pub->publish(command);
-
-        //     LifecycleNode::on_deactivate(state);
-        //     RCUTILS_LOG_INFO_NAMED("lifecycle_point_stamped_incr", "on_deactivate() is called.");
-        //     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
-        // }
-
         rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
         on_cleanup(const rclcpp_lifecycle::State &)
         {
@@ -533,16 +406,13 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
         {
             if(pntstmpd_pub->is_activated())
             {
-                // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TESTING");
                 rclcpp::Time current_time = rclcpp::Clock().now();
 
                 if (fresh_joy_state == true)
                 {
                     // If frequency set to 0, then only publishes messages when a new joy message is received
-                    // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TEST 0");
                     if (is_joy_freq)
                     {
-                        // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TEST 1");
                         fresh_joy_state = false;
                     }
 
@@ -551,8 +421,6 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
                         // Reading the raw PointStamped commands
 
                         alt_enabled(alt_input);
-
-                        // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TEST 2");
 
                         command = x_axis_inc(x_inc_input, command);
                         command = x_axis_dec(x_dec_input, command);
@@ -590,7 +458,6 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
 
         void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state) const
         {
-            // RCLCPP_INFO(rclcpp::get_logger("lifecycle_point_stamped_incr"), "TEST JOY");
             latest_joy_state = *joy_state;
             fresh_joy_state = true;
         }
@@ -599,15 +466,6 @@ class LifecyclePointStampedIncrNode : public rclcpp_lifecycle::LifecycleNode
 
 int main(int argc, char * argv[])
 {
-    // rclcpp::init(argc, argv);
-    // rclcpp::spin(std::make_shared<LifecyclePointStampedIncrNode>());
-    // rclcpp::shutdown();
-    // return 0;
-
-    // force flush of the stdout buffer.
-    // this ensures a correct sync of all prints
-    // even when executed simultaneously within the launch file.
-
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
     rclcpp::init(argc, argv);
@@ -739,7 +597,7 @@ static geometry_msgs::msg::PointStamped offset_command()
 
 static geometry_msgs::msg::PointStamped x_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+    auto new_command = temp_command;
 
     switch (input.type)
     {
@@ -754,6 +612,8 @@ static geometry_msgs::msg::PointStamped x_axis_inc(const MovementInput input, ge
         case InputType::Button:
             new_command.point.x = new_command.point.x + (curr_x_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index)* pow(-1, x_flip);
             break;
+        default:
+            throw std::logic_error("Invalid input type");
     }
 
     if (new_command.point.x >= curr_x_max)
@@ -770,7 +630,7 @@ static geometry_msgs::msg::PointStamped x_axis_inc(const MovementInput input, ge
 
 static geometry_msgs::msg::PointStamped x_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+    auto new_command = temp_command;
     
     switch (input.type)
     {
@@ -785,6 +645,8 @@ static geometry_msgs::msg::PointStamped x_axis_dec(const MovementInput input, ge
         case InputType::Button:
             new_command.point.x = new_command.point.x - (curr_x_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index)* pow(-1, x_flip);
             break;
+        default:
+            throw std::logic_error("Invalid input type");
     }
 
     if (new_command.point.x >= curr_x_max)
@@ -801,7 +663,7 @@ static geometry_msgs::msg::PointStamped x_axis_dec(const MovementInput input, ge
 
 static geometry_msgs::msg::PointStamped y_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+    auto new_command = temp_command;
     
     switch (input.type)
     {
@@ -816,6 +678,8 @@ static geometry_msgs::msg::PointStamped y_axis_inc(const MovementInput input, ge
         case InputType::Button:
             new_command.point.y = new_command.point.y - (curr_y_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index) * pow(-1, y_flip);
             break;
+        default:
+            throw std::logic_error("Invalid input type");
     }
 
     if (new_command.point.y >= curr_y_max)
@@ -832,7 +696,7 @@ static geometry_msgs::msg::PointStamped y_axis_inc(const MovementInput input, ge
 
 static geometry_msgs::msg::PointStamped y_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+    auto new_command = temp_command;
     
     switch (input.type)
     {
@@ -847,6 +711,8 @@ static geometry_msgs::msg::PointStamped y_axis_dec(const MovementInput input, ge
         case InputType::Button:
             new_command.point.y = new_command.point.y + (curr_y_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index) * pow(-1, y_flip);
             break;
+        default:
+            throw std::logic_error("Invalid input type");
     }
 
     if (new_command.point.y >= curr_y_max)
@@ -863,7 +729,7 @@ static geometry_msgs::msg::PointStamped y_axis_dec(const MovementInput input, ge
 
 static geometry_msgs::msg::PointStamped z_axis_inc(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+    auto new_command = temp_command;
     
     switch (input.type)
     {
@@ -878,6 +744,8 @@ static geometry_msgs::msg::PointStamped z_axis_inc(const MovementInput input, ge
         case InputType::Button:
             new_command.point.z = new_command.point.z + (curr_z_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index) * pow(-1, z_flip);
             break;
+        default:
+            throw std::logic_error("Invalid input type");
     }
 
     if (new_command.point.z >= curr_z_max)
@@ -894,7 +762,7 @@ static geometry_msgs::msg::PointStamped z_axis_inc(const MovementInput input, ge
 
 static geometry_msgs::msg::PointStamped z_axis_dec(const MovementInput input, geometry_msgs::msg::PointStamped temp_command)
 {
-    geometry_msgs::msg::PointStamped new_command = temp_command;
+    auto new_command = temp_command;
     
     switch (input.type)
     {
@@ -909,6 +777,8 @@ static geometry_msgs::msg::PointStamped z_axis_dec(const MovementInput input, ge
         case InputType::Button:
             new_command.point.z = new_command.point.z - (curr_z_max/rate_of_change_denom) * lin_rate_chg_fac * latest_joy_state.buttons.at(input.index) * pow(-1, z_flip);
             break;
+        default:
+            throw std::logic_error("Invalid input type");
     }
 
     if (new_command.point.z >= curr_z_max)
