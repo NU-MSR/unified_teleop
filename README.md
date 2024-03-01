@@ -36,6 +36,8 @@ Illustrative examples for these concepts are available in the `/example` directo
 2. **PointStamped Mirror Node (`point_stamped_mirror`):** Similar to the Twist Mirror Node, it publishes `PointStamped` messages that match the user's control actions, offering a mirrored, one-to-one mapping between joystick movement and positional output.
 3. **PointStamped Incremental Node (`point_stamped_incr`):** This node, configured with your Output and Input Schemes, emits `PointStamped` messages where the position values incrementally adjust based on continuous user inputs. For instance, pressing and holding a button causes a gradual increase in the position value.
 4. **Twist Merger Node (`twist_merger`):** A specialized node that fuses `Twist` messages from two distinct topics. It combines linear movements from one source with angular movements from another to output a cohesive `Twist` message. This functionality is particularly useful when you need to integrate multiple Output Schemes or control nodes for a unified motion command.
+5. **Lifecycle Twist Mirror Node (`lifecycle_twist_mirror`):** Lifecycle node implementation of Twist Mirror Node, where once configured the subcriber and publisher are initialized, but it will only publish commands when active.
+6. **Lifecycle PointStamped Incremental Node (`lifecycle_point_stamped_incr`):** Lifecycle node implementation of PointStamped Incremental Node, where once configured the subcriber and publisher are initialized, but it will only publish commands when active.
 
 ## Common Demos
 ### Examples
