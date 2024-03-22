@@ -24,8 +24,25 @@ find_package(lifecycle_msgs REQUIRED)
 set(UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES
   rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
 )
+
+# Create a library
+add_library(${PROJECT_NAME} src/controller.cpp)
+
+# Include the include directories and their header files
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+    $<INSTALL_INTERFACE:include/>)
+
+ament_target_dependencies(${PROJECT_NAME}
+  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+)
+target_link_libraries(${PROJECT_NAME}
+  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+)
+
 set(UNIFIED_TELEOP_TARGET_LINK_LIBRARIES
-  cmakeme_flags yaml-cpp
+  cmakeme_flags yaml-cpp ${PROJECT_NAME}
   "${cpp_typesupport_target}"
 )
 
