@@ -43,6 +43,7 @@
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
 #include "param_helpers.hpp"
+#include "unified_teleop/controller.hpp"
 
 #include <string>
 #include <cmath>
@@ -59,29 +60,6 @@
 #include <map>
 
 using std::string;
-
-/// @brief The input type of an input (Axis, Trigger, Button)
-enum class InputType
-{
-    Axis,       // Inputs that are reflected in the axes array of the joy message, 
-                // usually reflect joysticks or directional numbers on a game controller,
-                // their default value is 0.0.
-                
-    Trigger,    // Inputs that are reflected in the axes array of the joy message,
-                // usually reflect the triggers on a game controller,
-                // their default value is 1.0, and when fully pressed becomes -1.0.
-
-    Button,     // Inputs that are reflected in the button array of the joy message,
-                // usually reflect any and all buttons that give a 0 or 1 input.
-};
-
-/// @brief An object representing a particular function's input (e.g. move forward, move left),
-///        containing said input's index in the received joy message and that input's input type
-struct MovementInput
-{
-    int index; // Index number that correlates with its position in the joy message array
-    InputType type; // InputType that indicates the type of input it is (Axis, Trigger, Button)
-};
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -150,24 +128,18 @@ class PointStampedMirrorNode : public rclcpp::Node
             auto pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
             auto full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
             auto input_device = YAML::LoadFile(full_path);
-            // Getting the input device name and printing it to the serial
-            const auto device_name = input_device["name"].as<string>();
-            RCLCPP_INFO(rclcpp::get_logger("point_stamped_mirror"), ("Currently using the " + device_name + " input device").c_str());
-            // Creating the button map from the input device config file
-            std::map<string, int> button_map;
-            for (const auto& it : input_device["mapping"])
-            {
-                button_map[it.first.as<string>()] = it.second.as<int>();
-            }
+            // Initialize Controller object w/ the input device YAML config file
+            rosnu::Controller controller(input_device);
+
             // Initializing MovementInputs from the retrieved input assignments parameters and created button mapping
-            enable_input = function_input(enable_assignment, button_map);
-            alt_input = function_input(alt_assignment, button_map);
-            x_inc_input = function_input(x_inc_assignment, button_map);
-            x_dec_input = function_input(x_dec_assignment, button_map);
-            y_inc_input = function_input(y_inc_assignment, button_map);
-            y_dec_input = function_input(y_dec_assignment, button_map);
-            z_inc_input = function_input(z_inc_assignment, button_map);
-            z_dec_input = function_input(z_dec_assignment, button_map);
+            enable_input = controller.generate_MovementInput(enable_assignment);
+            alt_input = controller.generate_MovementInput(alt_assignment);
+            x_inc_input = controller.generate_MovementInput(x_inc_assignment);
+            x_dec_input = controller.generate_MovementInput(x_dec_assignment);
+            y_inc_input = controller.generate_MovementInput(y_inc_assignment);
+            y_dec_input = controller.generate_MovementInput(y_dec_assignment);
+            z_inc_input = controller.generate_MovementInput(z_inc_assignment);
+            z_dec_input = controller.generate_MovementInput(z_dec_assignment);
             // Store all initialized MovementInputs in a vector
             move_input_vec = {enable_input, alt_input, x_inc_input, x_dec_input,
                                 y_inc_input, y_dec_input, z_inc_input, z_dec_input};
@@ -235,16 +207,16 @@ class PointStampedMirrorNode : public rclcpp::Node
         bool y_flip;
         bool z_flip;
         // The various MovementInput objects to be initialized in the constructor
-        std::optional<MovementInput> enable_input;
-        std::optional<MovementInput> reset_input;
-        std::optional<MovementInput> alt_input;
-        std::optional<MovementInput> x_inc_input;
-        std::optional<MovementInput> x_dec_input;
-        std::optional<MovementInput> y_inc_input;
-        std::optional<MovementInput> y_dec_input;
-        std::optional<MovementInput> z_inc_input;
-        std::optional<MovementInput> z_dec_input;
-        std::vector<std::optional<MovementInput>> move_input_vec; // Vector containing all initialized MovementInput objects
+        std::optional<rosnu::MovementInput> enable_input;
+        std::optional<rosnu::MovementInput> reset_input;
+        std::optional<rosnu::MovementInput> alt_input;
+        std::optional<rosnu::MovementInput> x_inc_input;
+        std::optional<rosnu::MovementInput> x_dec_input;
+        std::optional<rosnu::MovementInput> y_inc_input;
+        std::optional<rosnu::MovementInput> y_dec_input;
+        std::optional<rosnu::MovementInput> z_inc_input;
+        std::optional<rosnu::MovementInput> z_dec_input;
+        std::vector<std::optional<rosnu::MovementInput>> move_input_vec; // Vector containing all initialized MovementInput objects
 
         //
         // NODE DECLARATIONS
@@ -416,6 +388,10 @@ class PointStampedMirrorNode : public rclcpp::Node
                         old_val = previous_joy_state.buttons.at(input->index);
                         new_val = latest_joy_state.buttons.at(input->index);
                         break;
+                    // Should not reach here, but if it does, then return error
+                    case InputType::None:
+                        RCLCPP_ERROR(this->get_logger(), "InputType is None");
+                        rclcpp::shutdown();
                 }
 
                 // If any of the inputs are different, immediately break the loop
@@ -488,6 +464,9 @@ class PointStampedMirrorNode : public rclcpp::Node
                 case InputType::Button:
                     reading = latest_joy_state.buttons.at(input->index);
                     break;
+                case InputType::None:
+                    RCLCPP_ERROR(this->get_logger(), "InputType is None");
+                    rclcpp::shutdown();
             }
 
             // If the input type is Axis, check reading based on whether it's above or below 0.0 and is_increasing
@@ -646,58 +625,6 @@ class PointStampedMirrorNode : public rclcpp::Node
             new_command.point.y = round(input_command.point.y * std::pow(10, precision))/std::pow(10, precision);
             new_command.point.z = round(input_command.point.z * std::pow(10, precision))/std::pow(10, precision);
             return new_command;
-        }
-
-        //
-        // INPUT/OUTPUT SCHEME FUNCTIONS
-        //
-        /// @brief Returns the type of the input based on its name
-        /// (Axis if it begins with an 'a', Trigger if it begins with a 't', Button if it begins with a 'b')
-        /// @param input_name - The name of the controller input
-        InputType input_type(const string input_name)
-        {
-            if (input_name.empty())
-            {
-                RCLCPP_ERROR(rclcpp::get_logger("point_stamped_mirror"), "Provided input is empty");
-                rclcpp::shutdown();
-                throw std::runtime_error("Provided input is empty");
-            }
-
-            char first_character = input_name.at(0);
-            
-            switch (first_character)
-            {
-                case 'a':
-                    return InputType::Axis;
-                case 't':
-                    return InputType::Trigger;
-                case 'b':
-                    return InputType::Button;
-                default:
-                    RCLCPP_ERROR(rclcpp::get_logger("point_stamped_mirror"), "Unable to determine input type");
-                    rclcpp::shutdown();
-                    throw std::runtime_error("Unable to determine input type");
-            }
-            
-        }
-
-        /// @brief Returns an optional MovementInput object for an input assignment by referencing to an input map
-        /// @param input_assignment - The name of the input that is used for that function
-        /// @param map - The input mapping based on the input scheme from the device config file
-        std::optional<MovementInput> function_input(const string input_assignment, const std::map<string, int> map)
-        {
-            if (input_assignment != "UNUSED")
-            {
-                MovementInput result_input;
-                result_input.index = map.at(input_assignment);
-                result_input.type = input_type(input_assignment);
-
-                return result_input;
-            }
-            else
-            {
-                return std::nullopt;
-            }
         }
 };
 
