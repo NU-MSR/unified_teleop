@@ -42,7 +42,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
-#include "param_helpers.hpp"
+#include "unified_teleop/param_helpers.hpp"
 #include "unified_teleop/controller.hpp"
 
 #include <string>
