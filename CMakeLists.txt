@@ -26,7 +26,7 @@ set(UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES
 )
 
 # Create a library
-add_library(${PROJECT_NAME} src/controller.cpp include/unified_teleop/param_helpers.hpp)
+add_library(${PROJECT_NAME} src/controller.cpp include/unified_teleop/param_helpers.hpp include/unified_teleop/pnt_stmp_modifiers.hpp)
 
 # Include the include directories and their header files
 target_include_directories(${PROJECT_NAME}

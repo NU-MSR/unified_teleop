@@ -43,6 +43,7 @@
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
 #include "unified_teleop/param_helpers.hpp"
+#include "unified_teleop/pnt_stmp_modifiers.hpp"
 #include "unified_teleop/controller.hpp"
 
 #include <string>
@@ -151,7 +152,7 @@ class PointStampedMirrorNode : public rclcpp::Node
             curr_y_max = 1.0;
             curr_z_max = 1.0;
             // Ensure upon start up, the robot starts in the center position
-            command = zero_command();
+            command = rosnu::set_pnt_stmp(0.0, 0.0, 0.0);
             p_cmd = command;
             // If pub_frequency is set to 0.0, then node only publishes a message when a new joy message
             // with different input values for any of the MovementInputs is received
@@ -241,7 +242,7 @@ class PointStampedMirrorNode : public rclcpp::Node
                 // If the node has control enabled, derive the desired command from the inputs
                 if(control_enabled(enable_input))
                 {
-                    command = zero_command();
+                    command = rosnu::set_pnt_stmp(0.0, 0.0, 0.0);
                     
                     alt_enabled(alt_input); // Adjusting max values according to parameters
 
@@ -253,12 +254,12 @@ class PointStampedMirrorNode : public rclcpp::Node
                     command = modify_axis(y_inc_input, command, AxisType::Y_Axis, true);
                     command = modify_axis(y_dec_input, command, AxisType::Y_Axis, false);
 
-                    command = flip_movement(command); // Adjusting raw command based on parameters
+                    command = rosnu::invert_pnt_stmp(command, x_flip, y_flip, z_flip); // Adjusting raw command based on parameters
                 }
                 // If control is not enabled, then raw command is set to the zero position  
                 else
                 {
-                    command = zero_command();
+                    command = rosnu::set_pnt_stmp(0.0, 0.0, 0.0);
                 }
             }
 
@@ -268,11 +269,11 @@ class PointStampedMirrorNode : public rclcpp::Node
             // Modifiers will always be applied to raw commands
             // Implementing rate of change modifier
             // Get the diff between curr and new
-            geometry_msgs::msg::PointStamped diff_pntstmp = subtract_pntstmp(command, p_cmd);
+            geometry_msgs::msg::PointStamped diff_pntstmp = rosnu::subtract_pntstmp(command, p_cmd);
             // Adjust the diff so that it's within the set rate_of_change
-            geometry_msgs::msg::PointStamped adjusted_diff = normalize_pntstmp(diff_pntstmp, rate_of_change * lin_rate_chg_fac);
+            geometry_msgs::msg::PointStamped adjusted_diff = rosnu::normalize_pntstmp(diff_pntstmp, rate_of_change * lin_rate_chg_fac);
             // Increment it on the new processed command
-            p_cmd = add_pntstmp(p_cmd, adjusted_diff);
+            p_cmd = rosnu::add_pntstmp(p_cmd, adjusted_diff);
 
             // Implementing spherical positional boundary modifier
             // Make sure the robot's position is constrained to the desired spherical space
@@ -283,14 +284,14 @@ class PointStampedMirrorNode : public rclcpp::Node
                 // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
                 if (distance_from_home_sqrd > pow(boundary_radius, 2))
                 {
-                    p_cmd = normalize_pntstmp(p_cmd, boundary_radius);
+                    p_cmd = rosnu::normalize_pntstmp(p_cmd, boundary_radius);
                 }
             }
 
             // Adjust command so that it is offset as desired
-            geometry_msgs::msg::PointStamped offset_cmd = add_pntstmp(p_cmd, offset_command());
+            geometry_msgs::msg::PointStamped offset_cmd = rosnu::add_pntstmp(p_cmd, rosnu::set_pnt_stmp(x_offset, y_offset, z_offset));
             // Round the values of the message so that it does not sporadically change
-            offset_cmd = round_pntstmp(offset_cmd);
+            offset_cmd = rosnu::round_pntstmp(offset_cmd, 3);
             
             //
             // PUBLISHING MODIFIED COMMAND
@@ -499,18 +500,6 @@ class PointStampedMirrorNode : public rclcpp::Node
             return new_message;
         }
 
-        /// @brief Returns a PointStamped command that has zero for all of its fields
-        geometry_msgs::msg::PointStamped zero_command()
-        {
-            geometry_msgs::msg::PointStamped new_command;
-
-            new_command.point.x = 0.0;
-            new_command.point.y = 0.0;
-            new_command.point.z = 0.0;
-
-            return new_command;
-        }
-
         //
         // OUTPUT MODIFIER FUNCTIONS
         //
@@ -540,89 +529,6 @@ class PointStampedMirrorNode : public rclcpp::Node
                 curr_y_max = alt_y_max;
                 curr_z_max = alt_z_max;
             }
-        }
-
-        /// @brief Returns a PointStamped command that has the offset values applied to all of its fields
-        geometry_msgs::msg::PointStamped offset_command()
-        {
-            geometry_msgs::msg::PointStamped new_command;
-
-            new_command.point.x = x_offset;
-            new_command.point.y = y_offset;
-            new_command.point.z = z_offset;
-
-            return new_command;
-        }
-
-        /// @brief Returns flipped positions depenending on parameters
-        /// @param temp_command - The message that will be modified with flipped sign values
-        geometry_msgs::msg::PointStamped flip_movement(geometry_msgs::msg::PointStamped temp_command)
-        {
-            temp_command.point.x *= pow(-1, x_flip);
-            temp_command.point.y *= pow(-1, y_flip);
-            temp_command.point.z *= pow(-1, z_flip);
-
-            return temp_command;
-        }
-
-        /// @brief Returns a PointStamped message that reflects the difference between two given PointStamped messages
-        /// @param subtracted - The PointStamped message that will be subtracted
-        /// @param subtractor - The PointStamped message that will be subtracting from the subtracted
-        geometry_msgs::msg::PointStamped subtract_pntstmp(geometry_msgs::msg::PointStamped subtracted, geometry_msgs::msg::PointStamped subtractor)
-        {
-            geometry_msgs::msg::PointStamped new_command;
-            new_command.point.x = subtracted.point.x - subtractor.point.x;
-            new_command.point.y = subtracted.point.y - subtractor.point.y;
-            new_command.point.z = subtracted.point.z - subtractor.point.z;
-            return new_command;
-        }
-
-        /// @brief Returns a PointStamped message that normalizes the values to a given magnitude
-        /// @param input_command - The PointStamped message that will be normalized
-        /// @param new_mag - The desired magnitude for the resulting PointStamped message
-        geometry_msgs::msg::PointStamped normalize_pntstmp(geometry_msgs::msg::PointStamped input_command, double new_mag)
-        {
-            geometry_msgs::msg::PointStamped norm_command = input_command;
-            double magnitude = sqrt(input_command.point.x * input_command.point.x + input_command.point.y * input_command.point.y + input_command.point.z * input_command.point.z);
-            
-            if (new_mag == 0)
-            {
-                new_mag = magnitude;
-            }
-
-            // If magnitude != 0 adjust pos accordingly, otherwise return original vector
-            if (magnitude != 0)
-            {
-                norm_command.point.x = new_mag * norm_command.point.x / magnitude;
-                norm_command.point.y = new_mag * norm_command.point.y / magnitude;
-                norm_command.point.z = new_mag * norm_command.point.z / magnitude; 
-            }
-
-            return norm_command;
-        }
-
-        /// @brief Returns a PointStamped message that reflects the sum between two given PointStamped messages
-        /// @param subtracted - First part of PointStamped addition
-        /// @param subtractor - Second part of the PointStamped addition
-        geometry_msgs::msg::PointStamped add_pntstmp(geometry_msgs::msg::PointStamped add1, geometry_msgs::msg::PointStamped add2)
-        {
-            geometry_msgs::msg::PointStamped new_command;
-            new_command.point.x = add1.point.x + add2.point.x;
-            new_command.point.y = add1.point.y + add2.point.y;
-            new_command.point.z = add1.point.z + add2.point.z;
-            return new_command;
-        }
-
-        /// @brief Returns a PointStamped message that with rounded values to a certain decimal point
-        /// @param input_command - The PointStamped message that will be rounded
-        geometry_msgs::msg::PointStamped round_pntstmp(geometry_msgs::msg::PointStamped input_command)
-        {
-            geometry_msgs::msg::PointStamped new_command;
-            int precision = 3;
-            new_command.point.x = round(input_command.point.x * std::pow(10, precision))/std::pow(10, precision);
-            new_command.point.y = round(input_command.point.y * std::pow(10, precision))/std::pow(10, precision);
-            new_command.point.z = round(input_command.point.z * std::pow(10, precision))/std::pow(10, precision);
-            return new_command;
         }
 };
 
