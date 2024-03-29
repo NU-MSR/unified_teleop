@@ -60,9 +60,7 @@ using std::placeholders::_1;
 class PointStampedMirrorNode : public rclcpp::Node
 {
     public:
-        PointStampedMirrorNode() :  Node("point_stamped_mirror"),
-                                    new_joy_state_received(false),
-                                    only_pub_with_joy(false)
+        PointStampedMirrorNode() :  Node("point_stamped_mirror")
         {
             //
             // PARAMETERS
@@ -138,7 +136,9 @@ class PointStampedMirrorNode : public rclcpp::Node
             current_command = rosnu::set_pnt_stmp(0.0, 0.0, 0.0);
             previous_command = current_command;
 
-            RCLCPP_ERROR(rclcpp::get_logger("TESTING"), "1");
+            // Initialize variables
+            only_pub_with_joy = false;
+            new_joy_state_received = false;
 
             // If pub_frequency is set to 0.0, then node only publishes a message when a joy message is received - in the joy message callback
             if (pub_frequency == 0.0)
