@@ -19,17 +19,17 @@ namespace rosnu
 
     void Controller::update_joy_state(const sensor_msgs::msg::Joy::SharedPtr &msg)
     {
-        previous_joy_state = current_joy_state;
-        current_joy_state = *msg;
-        fresh_joy_state = true;
+        previous_joy_state = current_joy_state; // Store the current state as the previous state.
+        current_joy_state = *msg; // Update the current state with the new message.
     }
 
     void Controller::update_button_map(YAML::Node device_config_file_path)
     {
-        // Indicate the name of the input device being used
+        // Log the input device being used for clarity.
         const auto device_name = device_config_file_path["name"].as<std::string>();
         RCLCPP_INFO(rclcpp::get_logger("controller"), ("Currently using the " + device_name + " input device").c_str());
-        // Fill in the button map with the button mapping from the device config file
+        
+        // Populate the button map with mappings from the device configuration.
         for (const auto& it : device_config_file_path["mapping"])
         {
             button_map[it.first.as<std::string>()] = it.second.as<int>();
@@ -41,17 +41,17 @@ namespace rosnu
         if (input_assignment != "UNUSED")
         {
             MovementInput result_input;
-            result_input.index = button_map.at(input_assignment);
-            result_input.type = get_input_type(input_assignment);
+            result_input.index = button_map.at(input_assignment); // Set index based on the button map.
+            result_input.type = get_input_type(input_assignment); // Determine the type of input.
 
-            // Add the generated MovementInput object to the MovementInput_vec
+            // Add the newly generated MovementInput object to the MovementInput_vec for tracking.
             MovementInput_vec.push_back(result_input);
 
-            return result_input;
+            return result_input; // Return the MovementInput object wrapped in an optional.
         }
         else
         {
-            return std::nullopt;
+            return std::nullopt; // Return nullopt if the input is unused.
         }
     }
 
@@ -59,72 +59,75 @@ namespace rosnu
     {
         if (input.has_value())
         {
+            // Return the state of the input based on its type (Axis, Trigger, or Button).
             switch(input->type)
             {
                 case InputType::Axis:
-                    return joy_state.axes.at(input->index);
-                case InputType::Trigger:
-                    return joy_state.axes.at(input->index);
+                case InputType::Trigger: // Treat Trigger inputs as Axis for simplicity.
+                    return joy_state.axes.at(input->index); // Return the axis value.
                 case InputType::Button:
-                    return joy_state.buttons.at(input->index);
+                    return joy_state.buttons.at(input->index); // Return the button state (pressed or not).
                 default:
-                    RCLCPP_ERROR(rclcpp::get_logger("controller"), "MovementInput not initialized");
-                    return 0.0;
+                    RCLCPP_ERROR(rclcpp::get_logger("controller"), "MovementInput type is not recognized");
+                    return 0.0; // Return default value if the input type is unrecognized.
             }
         }
         else
         {
-            RCLCPP_ERROR(rclcpp::get_logger("controller"), "MovementInput not initialized");
-            return 0.0;
+            RCLCPP_ERROR(rclcpp::get_logger("controller"), "MovementInput object is not initialized");
+            return 0.0; // Return default value if the MovementInput object is not initialized.
         }
     }
 
     void Controller::clear_MovementInput_vec()
     {
-        MovementInput_vec.clear();
+        MovementInput_vec.clear(); // Empty the vector of MovementInput objects.
     }
 
     bool Controller::is_joy_state_different()
     {
         bool result = false;
-            for (int i = 0; i < static_cast<int>(MovementInput_vec.size()); i++)
+        for (int i = 0; i < static_cast<int>(MovementInput_vec.size()); i++)
+        {
+            std::optional<rosnu::MovementInput> input = MovementInput_vec[i];
+            double old_val, new_val;
+
+            // Skip comparison if the input is null.
+            if (!input)
             {
-                std::optional<rosnu::MovementInput> input = MovementInput_vec[i];
-                double old_val, new_val;
-
-                // If the input is null, do not check it and continue to the next iteration
-                if (!input)
-                {
-                    continue;
-                }
-
-                new_val = read_MovementInput(input, current_joy_state);
-                old_val = read_MovementInput(input, previous_joy_state);
-
-                // If any of the inputs are different, immediately break the loop
-                if (old_val != new_val)
-                {
-                    result = true;
-                    break;
-                }
+                continue;
             }
 
-            return result;
+            // Read the old and new values for the given input.
+            new_val = read_MovementInput(input, current_joy_state);
+            old_val = read_MovementInput(input, previous_joy_state);
+
+            // Check for any difference in input states.
+            if (old_val != new_val)
+            {
+                result = true; // Set result to true if any input has changed.
+                break; // Exit the loop as we have found a difference.
+            }
+        }
+
+        return result; // Return whether any inputs have changed.
     }
 
     bool Controller::is_enabled(const std::optional<MovementInput> input)
     {
+        // Check the always_enabled flag first.
         if (always_enabled)
         {
-            return true;
+            return true; // Return true if always_enabled is set.
         }
         else if (input.has_value())
         {
+            // Check if the input's state is non-zero, indicating activity.
             return std::abs(read_MovementInput(input, current_joy_state)) > 0.0;
         }
         else
         {
-            return false;
+            return false; // Return false if the input is not initialized or its state is zero.
         }
     }
 
@@ -134,38 +137,33 @@ namespace rosnu
 
     InputType Controller::get_input_type(const std::string input_name)
     {
+        // Handle empty input names.
         if (input_name.empty())
         {
-            RCLCPP_ERROR(rclcpp::get_logger("controller"), "Provided input is empty");
-            rclcpp::shutdown();
-            throw std::runtime_error("Provided input is empty");
+            RCLCPP_ERROR(rclcpp::get_logger("controller"), "Provided input name is empty");
+            throw std::runtime_error("Provided input name is empty");
         }
 
+        // Determine the input type based on the first character of the input name.
         char first_character = input_name.at(0);
         
         switch (first_character)
         {
             case 'a':
-                return InputType::Axis;
+                return InputType::Axis; // Return Axis if the name starts with 'a'.
             case 't':
-                return InputType::Trigger;
+                return InputType::Trigger; // Return Trigger if the name starts with 't'.
             case 'b':
-                return InputType::Button;
+                return InputType::Button; // Return Button if the name starts with 'b'.
             default:
-                RCLCPP_ERROR(rclcpp::get_logger("controller"), "Unable to determine input type");
-                rclcpp::shutdown();
-                throw std::runtime_error("Unable to determine input type");
+                RCLCPP_ERROR(rclcpp::get_logger("controller"), "Unable to determine the input type from the name");
+                throw std::runtime_error("Unable to determine the input type from the name");
         }
-    }
-
-    double Controller::get_input_state(int index)
-    {
-        return current_joy_state.axes.at(index);
     }
 
     sensor_msgs::msg::Joy Controller::get_current_joy_state()
     {
-        return current_joy_state;
+        return current_joy_state; // Return the stored current joy state.
     }
 
     //
@@ -174,6 +172,6 @@ namespace rosnu
 
     void Controller::set_always_enabled(bool enabled)
     {
-        always_enabled = enabled;
+        always_enabled = enabled; // Update the always_enabled flag with the given value.
     }
 }
