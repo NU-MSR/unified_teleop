@@ -72,14 +72,14 @@ class PointStampedMirrorNode : public rclcpp::Node
         //
         PointStampedMirrorNode() :  Node("point_stamped_mirror"),
                                     fresh_joy_state(false),
-                                    always_enable(false),
-                                    rate_of_change(1.5 * std::pow(10, -5))
+                                    always_enable(false)
         {
             //
             // PARAMETERS
             //
             // Frequency of publisher
             auto pub_frequency = rosnu::declare_and_get_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
+            base_rate_of_change = rosnu::declare_and_get_param<double>("base_rate_of_change", 1.5f, *this, "Base rate of change for the output's values");
             // Function -> Controller input assignments from control scheme parameters
             const auto enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *this, "Button assigned to enable control inputs");
             const auto alt_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *this, "Button assigned to activate alternative max values");
@@ -183,7 +183,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         sensor_msgs::msg::Joy latest_joy_state, previous_joy_state;
         bool fresh_joy_state;
         bool always_enable;
-        const double rate_of_change;
+        double base_rate_of_change;
         // For node parameters
         bool is_first_joy; // Whether the received joy_state is the first one
         bool is_joy_freq; // Whether the node only publishes with every new received joy_state
@@ -239,8 +239,6 @@ class PointStampedMirrorNode : public rclcpp::Node
                 if(controller.is_enabled(enable_input))
                 {
                     command = rosnu::set_pnt_stmp(0.0, 0.0, 0.0);
-                    
-                    alt_enabled(alt_input); // Adjusting max values according to parameters
 
                     // Modifying output message based on joy_state
                     command = rosnu::adjust_mirror_joy(z_inc_input, command, rosnu::AxisType::Z_Axis, true, controller.get_current_joy_state());
@@ -270,8 +268,8 @@ class PointStampedMirrorNode : public rclcpp::Node
             // Implementing rate of change modifier
             // Get the diff between curr and new
             geometry_msgs::msg::PointStamped diff_pntstmp = rosnu::subtract_pntstmp(command, p_cmd);
-            // Adjust the diff so that it's within the set rate_of_change
-            geometry_msgs::msg::PointStamped adjusted_diff = rosnu::normalize_pntstmp(diff_pntstmp, rate_of_change * lin_rate_chg_fac);
+            // Adjust the diff so that it's within the set base_rate_of_change
+            geometry_msgs::msg::PointStamped adjusted_diff = rosnu::normalize_pntstmp(diff_pntstmp, (base_rate_of_change * std::pow(10, -5)) * lin_rate_chg_fac);
             // Increment it on the new processed command
             p_cmd = rosnu::add_pntstmp(p_cmd, adjusted_diff);
 
