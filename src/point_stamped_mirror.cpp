@@ -127,9 +127,9 @@ class PointStampedMirrorNode : public rclcpp::Node
             auto pkg_share_dir = ament_index_cpp::get_package_share_directory("unified_teleop");
             auto full_path = pkg_share_dir + "/config/" + input_device_config_file + ".yaml";
             auto input_device = YAML::LoadFile(full_path);
-            // Initialize Controller object w/ the input device YAML config file
-            rosnu::Controller controller(input_device);
-
+            // Load Controller object w/ the input device YAML config file
+            controller.update_button_map(input_device);
+            
             // Initializing MovementInputs from the retrieved input assignments parameters and created button mapping
             enable_input = controller.generate_MovementInput(enable_assignment);
             alt_input = controller.generate_MovementInput(alt_assignment);
@@ -147,10 +147,7 @@ class PointStampedMirrorNode : public rclcpp::Node
             // INITIALIZING VARIABLES
             //  
             is_first_joy = true;
-            //
-            curr_x_max = 1.0;
-            curr_y_max = 1.0;
-            curr_z_max = 1.0;
+            
             // Ensure upon start up, the robot starts in the center position
             command = rosnu::set_pnt_stmp(0.0, 0.0, 0.0);
             p_cmd = command;
@@ -179,6 +176,8 @@ class PointStampedMirrorNode : public rclcpp::Node
         //
         // MEMBER VARIABLE DECLARATIONS
         //
+        // Controller object
+        rosnu::Controller controller;
         // For joy and command messages
         geometry_msgs::msg::PointStamped command, p_cmd;
         sensor_msgs::msg::Joy latest_joy_state, previous_joy_state;
@@ -188,9 +187,6 @@ class PointStampedMirrorNode : public rclcpp::Node
         // For node parameters
         bool is_first_joy; // Whether the received joy_state is the first one
         bool is_joy_freq; // Whether the node only publishes with every new received joy_state
-        double curr_x_max;
-        double curr_y_max;
-        double curr_z_max;
         double x_max;
         double y_max;
         double z_max;
@@ -240,19 +236,23 @@ class PointStampedMirrorNode : public rclcpp::Node
             if(fresh_joy_state)
             {
                 // If the node has control enabled, derive the desired command from the inputs
-                if(control_enabled(enable_input))
+                if(controller.is_enabled(enable_input))
                 {
                     command = rosnu::set_pnt_stmp(0.0, 0.0, 0.0);
                     
                     alt_enabled(alt_input); // Adjusting max values according to parameters
 
                     // Modifying output message based on joy_state
-                    command = modify_axis(z_inc_input, command, AxisType::Z_Axis, true);
-                    command = modify_axis(z_dec_input, command, AxisType::Z_Axis, false);
-                    command = modify_axis(x_inc_input, command, AxisType::X_Axis, true);
-                    command = modify_axis(x_dec_input, command, AxisType::X_Axis, false);
-                    command = modify_axis(y_inc_input, command, AxisType::Y_Axis, true);
-                    command = modify_axis(y_dec_input, command, AxisType::Y_Axis, false);
+                    command = rosnu::adjust_mirror_joy(z_inc_input, command, rosnu::AxisType::Z_Axis, true, controller.get_current_joy_state());
+                    command = rosnu::adjust_mirror_joy(z_dec_input, command, rosnu::AxisType::Z_Axis, false, controller.get_current_joy_state());
+                    command = rosnu::adjust_mirror_joy(x_inc_input, command, rosnu::AxisType::X_Axis, true, controller.get_current_joy_state());
+                    command = rosnu::adjust_mirror_joy(x_dec_input, command, rosnu::AxisType::X_Axis, false, controller.get_current_joy_state());
+                    command = rosnu::adjust_mirror_joy(y_inc_input, command, rosnu::AxisType::Y_Axis, true, controller.get_current_joy_state());
+                    command = rosnu::adjust_mirror_joy(y_dec_input, command, rosnu::AxisType::Y_Axis, false, controller.get_current_joy_state());
+
+                    command = (controller.read_MovementInput(alt_input, controller.get_current_joy_state()) > 0.0) ? 
+                        rosnu::multiply_pntstmp(command, alt_x_max, alt_y_max, alt_z_max) : 
+                        rosnu::multiply_pntstmp(command, x_max, y_max, z_max);
 
                     command = rosnu::invert_pnt_stmp(command, x_flip, y_flip, z_flip); // Adjusting raw command based on parameters
                 }
@@ -327,6 +327,7 @@ class PointStampedMirrorNode : public rclcpp::Node
             // RCLCPP_INFO(rclcpp::get_logger("point_stamped_incr"), "TEST JOY");
             previous_joy_state = latest_joy_state;
             latest_joy_state = *joy_state;
+            controller.update_joy_state(joy_state);
             // If received joy_state is the first one, then assign same joy_state to previous_joy_state
             if (is_first_joy)
             {
@@ -345,7 +346,7 @@ class PointStampedMirrorNode : public rclcpp::Node
             // will the joy_state be deemed fresh and ready for node to publish a new output message
             else
             {
-                if (is_new_relevant_joy() && control_enabled(enable_input))
+                if (controller.is_joy_state_different() && controller.is_enabled(enable_input))
                 {
                     fresh_joy_state = true;
                 }
@@ -353,181 +354,6 @@ class PointStampedMirrorNode : public rclcpp::Node
                 {
                     fresh_joy_state = false;
                 }
-            }
-        }
-
-        //
-        // JOY FUNCTIONS
-        //
-        /// @brief Compares the latest and previous joy_states to see whether any of the inputs
-        /// that the node checks actually changed and returns true if so
-        bool is_new_relevant_joy() const
-        {
-            bool result = false;
-            for (int i = 0; i < static_cast<int>(move_input_vec.size()); i++)
-            {
-                std::optional<rosnu::MovementInput> input = move_input_vec[i];
-                double old_val, new_val;
-
-                // If the input is null, do not check it and continue to the next iteration
-                if (!input)
-                {
-                    continue;
-                }
-
-                switch (input->type)
-                {// If Axis or Trigger, then check the axes array in the joy states
-                    case rosnu::InputType::Axis:
-                    case rosnu::InputType::Trigger:
-                        old_val = previous_joy_state.axes.at(input->index);
-                        new_val = latest_joy_state.axes.at(input->index);
-                        break;
-                    // If Button, then check the buttons array in the joy states
-                    case rosnu::InputType::Button:
-                        old_val = previous_joy_state.buttons.at(input->index);
-                        new_val = latest_joy_state.buttons.at(input->index);
-                        break;
-                    // Should not reach here, but if it does, then return error
-                    case rosnu::InputType::None:
-                        RCLCPP_ERROR(this->get_logger(), "InputType is None");
-                        rclcpp::shutdown();
-                }
-
-                // If any of the inputs are different, immediately break the loop
-                if (old_val != new_val)
-                {
-                    result = true;
-                    break;
-                }
-            }
-            return result;
-        }
-
-        /// @brief Returns true if control inputs are enabled based on controller input (or if always_enable is trueSS)
-        /// @param input - The controller input that will enable this function
-        bool control_enabled(const std::optional<rosnu::MovementInput> input)
-        {
-            
-            if (always_enable)
-            {
-                return true;
-            }
-
-            return latest_joy_state.buttons.at(input->index);
-        }
-
-        //
-        // POINTSTAMPED FUNCTIONS
-        //
-        /// @brief The specific axis in a PointStamped message that will be modified
-        enum class AxisType
-        {
-            X_Axis,
-            Y_Axis,
-            Z_Axis
-        };
-
-        /// @brief Returns a modified message with a increased or decreased value for a specific axis depending
-        /// on what the user defines in both calling this function and parameters assigned upon startup
-        /// @param input - The controller input that decides how the original message will be modified
-        /// @param orig_message - The message that will be modified with new values
-        /// @param axis_type - The directional axis of the message that will be modified
-        /// @param is_increasing - Whethe the modification will involve increasing or decreasing the value
-        geometry_msgs::msg::PointStamped modify_axis(const std::optional<rosnu::MovementInput> input,
-                                                            const geometry_msgs::msg::PointStamped orig_message,
-                                                            const AxisType axis_type,
-                                                            const bool is_increasing)
-        {
-            // If the input is null, then return the original message
-            if (!input)
-            {
-                return orig_message;
-            }
-            
-            // Initialize variables
-            geometry_msgs::msg::PointStamped new_message = orig_message;
-            double reading = 0.0f;
-            double max_value = (axis_type == AxisType::X_Axis) ? curr_x_max :
-                                (axis_type == AxisType::Y_Axis) ? curr_y_max :
-                                curr_z_max;
-            
-            // Based on the input type, take in the appropriate readings from the joy_state
-            switch (input->type)
-            {
-                case rosnu::InputType::Axis:
-                    reading = latest_joy_state.axes.at(input->index);
-                    break;
-                case rosnu::InputType::Trigger:
-                    reading = 0.5 - (latest_joy_state.axes.at(input->index)/2.0);
-                    break;
-                case rosnu::InputType::Button:
-                    reading = latest_joy_state.buttons.at(input->index);
-                    break;
-                case rosnu::InputType::None:
-                    RCLCPP_ERROR(this->get_logger(), "InputType is None");
-                    rclcpp::shutdown();
-            }
-
-            // If the input type is Axis, check reading based on whether it's above or below 0.0 and is_increasing
-            // OR if the input type is not Axis, see if the reading is not 0.0
-            if ((input->type == rosnu::InputType::Axis && ((is_increasing && reading > 0.0f) || (!is_increasing && reading < 0.0f))) ||
-                (input->type != rosnu::InputType::Axis && reading != 0.0f))
-            {
-                // If the condition is satisfied, calculate the new_value for new_message
-                double new_value = max_value * reading;
-                // If the input type is not Axis AND the value is to be decreased (not increased),
-                // then flip the sign of the new_value
-                if (input->type != rosnu::InputType::Axis && !is_increasing)
-                {
-                    new_value = -new_value;
-                }
-
-                // Based on axis specified to be modified, modify that aspect of the new PointStamped message
-                switch (axis_type)
-                {
-                    case AxisType::X_Axis:
-                        new_message.point.x = new_value;
-                        break;
-                    case AxisType::Y_Axis:
-                        new_message.point.y = new_value;
-                        break;
-                    case AxisType::Z_Axis:
-                        new_message.point.z = new_value;
-                        break;
-                }
-            }
-
-            return new_message;
-        }
-
-        //
-        // OUTPUT MODIFIER FUNCTIONS
-        //
-        /// @brief Adjusts max values to defined alternative values based on controller input
-        /// @param input - The controller input that will enable this function
-        void alt_enabled(std::optional<rosnu::MovementInput> input)
-        {
-            // If the input is null, set the current max values and return immediately 
-            if (!input)
-            {
-                curr_x_max = x_max;
-                curr_y_max = y_max;
-                curr_z_max = z_max;
-                return;
-            }
-            
-            double input_reading = latest_joy_state.buttons.at(input->index);
-            if (input_reading == 0.0)
-            {
-                curr_x_max = x_max;
-                curr_y_max = y_max;
-                curr_z_max = z_max;
-            }
-            else
-            {
-                curr_x_max = alt_x_max;
-                curr_y_max = alt_y_max;
-                curr_z_max = alt_z_max;
             }
         }
 };

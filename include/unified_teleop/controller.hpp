@@ -43,9 +43,11 @@ namespace rosnu
     class Controller
     {
         private:
-            sensor_msgs::msg::Joy latest_joy_state;
+            sensor_msgs::msg::Joy current_joy_state, previous_joy_state;
             bool fresh_joy_state;
+            bool always_enabled = false;
             std::map<std::string, int> button_map;
+            std::vector<std::optional<rosnu::MovementInput>> MovementInput_vec;
         
         public:
             //
@@ -59,7 +61,7 @@ namespace rosnu
             // FUNCTIONS
             //
 
-            /// @brief Updates the latest_joy_state with the provided message and sets fresh_joy_state to true.
+            /// @brief Updates the current_joy_state with the provided message and sets fresh_joy_state to true.
             /// @param msg 
             /// @details This function updates the controller's input states and indicates that it is freshly (/newly) updated.
             void update_joy_state(const sensor_msgs::msg::Joy::SharedPtr &msg);
@@ -69,6 +71,14 @@ namespace rosnu
 
             /// @brief Using the input name and the map of input names to their respective index numbers provided by an input device config file, this function generates a MovementInput object.
             std::optional<MovementInput> generate_MovementInput(const std::string input_assignment);
+
+            double read_MovementInput(const std::optional<MovementInput> input, const sensor_msgs::msg::Joy joy_state);
+
+            void clear_MovementInput_vec();
+
+            bool is_joy_state_different();
+
+            bool is_enabled(const std::optional<rosnu::MovementInput> input);
 
             //
             // GETTERS
@@ -80,6 +90,14 @@ namespace rosnu
 
             /// @brief Return the latest state of the input with the provided index number.
             double get_input_state(int index);
+
+            sensor_msgs::msg::Joy get_current_joy_state();
+
+            //
+            // SETTERS
+            //
+
+            void set_always_enabled(bool enabled);
     };
 }
 
