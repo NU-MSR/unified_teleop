@@ -46,20 +46,17 @@
 #include "unified_teleop/pnt_stmp_modifiers.hpp"
 #include "unified_teleop/controller.hpp"
 
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include "yaml-cpp/yaml.h"
+
 #include <string>
 #include <cmath>
-
-#include "yaml-cpp/yaml.h"
 #include <iostream>
-#include <ament_index_cpp/get_package_share_directory.hpp>
-
 #include <chrono>
 #include <functional>
 #include <memory>
-
 #include <optional>
 #include <map>
-
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -68,13 +65,14 @@ class PointStampedMirrorNode : public rclcpp::Node
 {
     public:
         PointStampedMirrorNode() :  Node("point_stamped_mirror"),
-                                    fresh_joy_state(false)
+                                    new_joy_state_received(false),
+                                    only_pub_with_joy(false)
         {
             //
             // PARAMETERS
             //
             // Key control node parameters
-            auto pub_frequency = rosnu::declare_and_get_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output");
+            auto pub_frequency = rosnu::declare_and_get_param<double>("frequency", 100.0f, *this, "Frequency of teleoperation output, if set to 0.0, then the node only publishes with every new joy message received");
             base_rate_of_change = rosnu::declare_and_get_param<double>("base_rate_of_change", 1.5f, *this, "Base rate of change for the output's values");
             always_enable = rosnu::declare_and_get_param<bool>("always_enable", false, *this, "Whether control input is always enabled (USE WITH CAUTION)");
             only_pub_diff_joy = rosnu::declare_and_get_param<bool>("only_pub_diff_joy", false, *this, "Whether to only publish command when a new and different joy message is received");
@@ -82,7 +80,7 @@ class PointStampedMirrorNode : public rclcpp::Node
             // Function-to-controller input assignments
             const auto enable_assignment = rosnu::declare_and_get_param<std::string>("enable_control", "UNUSED", *this, "Button assigned to enable control inputs");
             const auto alt_assignment = rosnu::declare_and_get_param<std::string>("alt_enable", "UNUSED", *this, "Button assigned to activate alternative max values");
-            const auto x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *this, "Button assigned to increase the x-axis value of the robot");
+            const auto x_inc_assignment = rosnu::declare_and_get_param<std::string>("x_axis_inc", "UNUSED", *this, "Button> assigned to increase the x-axis value of the robot");
             const auto x_dec_assignment = rosnu::declare_and_get_param<std::string>("x_axis_dec", "UNUSED", *this, "Button assigned to decrease the x-axis value of the robot");
             const auto y_inc_assignment = rosnu::declare_and_get_param<std::string>("y_axis_inc", "UNUSED", *this, "Button assigned to increase the y-axis value of the robot");
             const auto y_dec_assignment = rosnu::declare_and_get_param<std::string>("y_axis_dec", "UNUSED", *this, "Button assigned to decrease the y-axis value of the robot");
@@ -91,7 +89,7 @@ class PointStampedMirrorNode : public rclcpp::Node
 
             // Output modifier parameters
             boundary_radius = rosnu::declare_and_get_param<double>("boundary_radius", 0.0f, *this, "Radius of the spherical space around the zero position that the robot can move in");
-            lin_rate_chg_fac = rosnu::declare_and_get_param<double>("lin_rate_chg_fac", 0.0f, *this, "Factor to the rate of change for the output's values");
+            lin_rate_chg_fac = rosnu::declare_and_get_param<double>("lin_rate_chg_fac", 0.0f, *this, "Factor to the rate of change for the output's values, if set to 0.0, then the output will be the same as the input");
             x_max = rosnu::declare_and_get_param<double>("x_max", 1.0f, *this, "The maximum output value along that axis of movement");
             y_max = rosnu::declare_and_get_param<double>("y_max", 1.0f, *this, "The maximum output value along that axis of movement");
             z_max = rosnu::declare_and_get_param<double>("z_max", 1.0f, *this, "The maximum output value along that axis of movement");
@@ -106,14 +104,10 @@ class PointStampedMirrorNode : public rclcpp::Node
             z_offset = rosnu::declare_and_get_param<double>("z_offset", 0.0f, *this, "The offset for the message's zero value");
             
             //
-            // SUBSCRIBERS
+            // SUBSCRIBERS & PUBLISHERS
             //
             // Subscribe to the joy topic to receive the input device's input
             joy_sub = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10, std::bind(&PointStampedMirrorNode::joy_callback, this, _1));
-
-            //
-            // PUBLISHERS
-            //
             // Publish the desired position for the robot to move to
             pntstmpd_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("desired_position", 100);
 
@@ -142,30 +136,24 @@ class PointStampedMirrorNode : public rclcpp::Node
             z_dec_input = controller.generate_MovementInput(z_dec_assignment);
             
             //
-            // PREPARE FOR TIMER
+            // PREPARE FOR PUBLISHING COMMANDS
             //
             // Ensure upon start up, the robot starts in the center position
             current_command = rosnu::set_pnt_stmp(0.0, 0.0, 0.0);
             previous_command = current_command;
 
-            // If pub_frequency is set to 0.0, then node only publishes a message when a new joy message with different input values for any of the MovementInputs is received
-            // (e.g. if the node does not have button r1 mapped, then pressing it will not trigger the publishing of a new message)
-            // With this, the timer will still be set to a frequency of 100.0
+            RCLCPP_ERROR(rclcpp::get_logger("TESTING"), "1");
+
+            // If pub_frequency is set to 0.0, then node only publishes a message when a joy message is received - in the joy message callback
             if (pub_frequency == 0.0)
             {
                 only_pub_with_joy = true;
-                pub_frequency = 100.0;
             }
+            // Otherwise, the node will publish messages at the set frequency in a timer callback
             else
             {
-                only_pub_with_joy = false;
+                timer_ = this->create_wall_timer(1.0s/pub_frequency, std::bind(&PointStampedMirrorNode::timer_callback, this));
             }
-            fresh_joy_state = false;
-
-            //
-            // TIMER
-            //
-            timer_ = this->create_wall_timer(1.0s/pub_frequency, std::bind(&PointStampedMirrorNode::timer_callback, this));
         }
 
     private:
@@ -176,8 +164,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         rosnu::Controller controller;
         // For joy and command messages
         geometry_msgs::msg::PointStamped current_command, previous_command;
-        sensor_msgs::msg::Joy latest_joy_state, previous_joy_state;
-        bool fresh_joy_state;
+        bool new_joy_state_received;
         bool always_enable;
         double base_rate_of_change;
         bool only_pub_diff_joy;
@@ -216,129 +203,129 @@ class PointStampedMirrorNode : public rclcpp::Node
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub;
 
         //
-        // TIMER CALLBACK
+        // FUNCTIONS
         //
         /// @brief Timer callback for node, reads joy_state to publish appropriate output messages
         void timer_callback()
         {
-            create_modify_publish_command();
+            // Make sure to only begin publishing if a joy message has been received
+            if (new_joy_state_received)
+            {
+                create_modify_publish_command();
+            }
         }
 
         /// @brief Joy callback for node, received joy_state and signals whether node should proceed with processing and publishing messages
         /// @param joy_state - The state of the inputs of the controller
         void joy_callback(const sensor_msgs::msg::Joy::SharedPtr joy_state)
         {
-            previous_joy_state = latest_joy_state;
-            latest_joy_state = *joy_state;
+            // Update the controller with the received joy state message
             controller.update_joy_state(joy_state);
 
-            // If not publishing according to joy's frequency,
-            // then every new joy_state is fresh and the node will publish as normal
-            if (!only_pub_with_joy)
+            // Indicate that a new joy state has been received
+            new_joy_state_received = true;
+
+            // If the node is set to only publish with every new joy message, then the node will publish the command
+            if (only_pub_with_joy)
             {
-                fresh_joy_state = true;
-            }
-            // But if node is specified to publish with each new joy message,
-            // then only if the relevant inputs of joy_state are changed AND with control enabled
-            // will the joy_state be deemed fresh and ready for node to publish a new output message
-            else
-            {
-                if (controller.is_joy_state_different() && controller.is_enabled(enable_input))
-                {
-                    fresh_joy_state = true;
-                }
-                else
-                {
-                    fresh_joy_state = false;
-                }
+                create_modify_publish_command();
             }
         }
 
         void create_modify_publish_command()
         {
+            // Note the current time of publishing
             rclcpp::Time current_time = rclcpp::Clock().now();
             
             //
             // READING RAW COMMAND
             //
-            // If a fresh_joy_state has arrived, the raw command will be adjusted
-            if(fresh_joy_state)
+            // Reset the raw command to zero
+            current_command = rosnu::set_pnt_stmp(0.0, 0.0, 0.0);
+            
+            // If the controller is enabled, derive the desired raw command from the controller's inputs
+            if(controller.is_enabled(enable_input))
             {
-                // If the node has control enabled, derive the desired command from the inputs
-                if(controller.is_enabled(enable_input))
-                {
-                    current_command = rosnu::set_pnt_stmp(0.0, 0.0, 0.0);
-
-                    // Modifying output message based on joy_state
-                    current_command = rosnu::adjust_mirror_joy(z_inc_input, current_command, rosnu::AxisType::Z_Axis, true, controller.get_current_joy_state());
-                    current_command = rosnu::adjust_mirror_joy(z_dec_input, current_command, rosnu::AxisType::Z_Axis, false, controller.get_current_joy_state());
-                    current_command = rosnu::adjust_mirror_joy(x_inc_input, current_command, rosnu::AxisType::X_Axis, true, controller.get_current_joy_state());
-                    current_command = rosnu::adjust_mirror_joy(x_dec_input, current_command, rosnu::AxisType::X_Axis, false, controller.get_current_joy_state());
-                    current_command = rosnu::adjust_mirror_joy(y_inc_input, current_command, rosnu::AxisType::Y_Axis, true, controller.get_current_joy_state());
-                    current_command = rosnu::adjust_mirror_joy(y_dec_input, current_command, rosnu::AxisType::Y_Axis, false, controller.get_current_joy_state());
-
-                    current_command = (controller.read_MovementInput(alt_input, controller.get_current_joy_state()) > 0.0) ? 
-                        rosnu::multiply_pntstmp(current_command, alt_x_max, alt_y_max, alt_z_max) : 
-                        rosnu::multiply_pntstmp(current_command, x_max, y_max, z_max);
-
-                    current_command = rosnu::invert_pnt_stmp(current_command, x_flip, y_flip, z_flip); // Adjusting raw command based on parameters
-                }
-                // If control is not enabled, then raw command is set to the zero position  
-                else
-                {
-                    current_command = rosnu::set_pnt_stmp(0.0, 0.0, 0.0);
-                }
+                // Modifying output message based on controller's joy state
+                current_command = rosnu::adjust_mirror_joy(z_inc_input, current_command, rosnu::AxisType::Z_Axis, true, controller.get_current_joy_state());
+                current_command = rosnu::adjust_mirror_joy(z_dec_input, current_command, rosnu::AxisType::Z_Axis, false, controller.get_current_joy_state());
+                current_command = rosnu::adjust_mirror_joy(x_inc_input, current_command, rosnu::AxisType::X_Axis, true, controller.get_current_joy_state());
+                current_command = rosnu::adjust_mirror_joy(x_dec_input, current_command, rosnu::AxisType::X_Axis, false, controller.get_current_joy_state());
+                current_command = rosnu::adjust_mirror_joy(y_inc_input, current_command, rosnu::AxisType::Y_Axis, true, controller.get_current_joy_state());
+                current_command = rosnu::adjust_mirror_joy(y_dec_input, current_command, rosnu::AxisType::Y_Axis, false, controller.get_current_joy_state());
             }
 
             //
-            // APPLYING MODIFIERS
+            // MODIFYING COMMAND
             //
-            // Modifiers will always be applied to raw commands
-            // Implementing rate of change modifier
-            // Get the diff between curr and new
-            geometry_msgs::msg::PointStamped diff_pntstmp = rosnu::subtract_pntstmp(current_command, previous_command);
-            // Adjust the diff so that it's within the set base_rate_of_change
-            geometry_msgs::msg::PointStamped adjusted_diff = rosnu::normalize_pntstmp(diff_pntstmp, (base_rate_of_change * std::pow(10, -5)) * lin_rate_chg_fac);
-            // Increment it on the new processed command
-            previous_command = rosnu::add_pntstmp(previous_command, adjusted_diff);
+            // Adjust the command's values based on their default or alternative max values, depending on the alt_input's state, and if enabled
+            if (controller.is_enabled(enable_input))
+            {
+                current_command = (controller.read_MovementInput(alt_input, controller.get_current_joy_state()) > 0.0) ? 
+                    rosnu::multiply_pntstmp(current_command, alt_x_max, alt_y_max, alt_z_max) : 
+                    rosnu::multiply_pntstmp(current_command, x_max, y_max, z_max);
+            }
 
-            // Implementing spherical positional boundary modifier
-            // Make sure the robot's position is constrained to the desired spherical space
+            // Switch the sign of the command's values based on the x, y, and z flip parameters
+            current_command = rosnu::invert_pnt_stmp(current_command, x_flip, y_flip, z_flip);
+
+            // Limit the rate of change of the command values according to the parameters, relative previous command's values
+            // NOTE that the rate of change is in the order of 10^-5 (this is arbitrary and can be adjusted as needed)
+            // NOTE if lin_rate_chg_fac is set to 0.0, then the command value will experience no change to its values at all
+
+            // Find the difference between previous and current command values
+            geometry_msgs::msg::PointStamped diff_pntstmp = rosnu::subtract_pntstmp(current_command, previous_command);
+            // Find an adjusted difference that has the desired magnitude/rate of change
+            geometry_msgs::msg::PointStamped adjusted_diff = rosnu::normalize_pntstmp(diff_pntstmp, (base_rate_of_change * std::pow(10, -5)) * lin_rate_chg_fac);
+            
+            // Increment this adjusted difference to the previous command values to get the desired adjusted command values
+            current_command = rosnu::add_pntstmp(previous_command, adjusted_diff);
+            // Note the new adjusted command values for subsequent rate of change command calculations
+            previous_command = current_command;
+
+            // Limit the command's values to a specified spherical space around the zero position
+            // NOTE if boundary_radius is set to 0.0, then the robot's command values are not constrained to a spherical space
+            //      rather, they are constrained to the maximum values set by the x, y, and z max parameters
+
+            // Check if command values are to be constrained
             if (boundary_radius != 0.0)
             {
-                // Find the robot's desired distance from home sqrd
-                double distance_from_home_sqrd = pow(previous_command.point.x, 2) + pow(previous_command.point.y, 2) + pow(previous_command.point.z, 2);
-                // If the distance is larger than the desired boundary radius, normalize the position's magnitude so that it's within allowed space
-                if (distance_from_home_sqrd > pow(boundary_radius, 2))
+                // Find the squared magnitude of the command's desired values from the zero position
+                double distance_from_zero_sqrd = pow(current_command.point.x, 2) + pow(current_command.point.y, 2) + pow(current_command.point.z, 2);
+
+                // If the desired squared magnitude is larger than the specified boundary radius squared,
+                // adjust the magnitude of the command's magnitude so that it's within the allowed spherical space
+                if (distance_from_zero_sqrd > pow(boundary_radius, 2))
                 {
-                    previous_command = rosnu::normalize_pntstmp(previous_command, boundary_radius);
+                    current_command = rosnu::normalize_pntstmp(current_command, boundary_radius);
                 }
             }
 
-            // Adjust command so that it is offset as desired
-            geometry_msgs::msg::PointStamped offset_cmd = rosnu::add_pntstmp(previous_command, rosnu::set_pnt_stmp(x_offset, y_offset, z_offset));
+            // Adjust the command so that the zero value of the message is offset by the x, y, and z offset parameters
+            geometry_msgs::msg::PointStamped offset_cmd = rosnu::add_pntstmp(current_command, rosnu::set_pnt_stmp(x_offset, y_offset, z_offset));
             // Round the values of the message so that it does not sporadically change
             offset_cmd = rosnu::round_pntstmp(offset_cmd, 3);
             
             //
-            // PUBLISHING MODIFIED COMMAND
+            // PUBLISHING FINALIZED COMMAND
             //
-            // Node will always publish if the frequency is not only_pub_with_joy
-            if (!only_pub_with_joy)
+            // Check if the node is specified to only publish when a different joy message is received
+            if (only_pub_diff_joy)
             {
-                offset_cmd.header.stamp = current_time;
-                pntstmpd_pub->publish(offset_cmd);
-            }
-            // But if publishing frequency is set to only_pub_with_joy, then it only publishes
-            // when a fresh_joy_state has been received
-            else
-            {
-                if (fresh_joy_state)
+                // If the controller's current joy state is different from the previous joy state and the controller is enabled
+                // then publish the finalized command message
+                if (controller.is_joy_state_different() && controller.is_enabled(enable_input))
                 {
                     offset_cmd.header.stamp = current_time;
                     pntstmpd_pub->publish(offset_cmd);
-                    fresh_joy_state = false; // Need to wait for the next fresh_joy_state to publish the next command
                 }
+            }
+
+            // Otherwise, publish the finalized command message
+            else
+            {
+                offset_cmd.header.stamp = current_time;
+                pntstmpd_pub->publish(offset_cmd);
             }
         }
 };

@@ -48,6 +48,7 @@ namespace rosnu
         private:
             sensor_msgs::msg::Joy current_joy_state, previous_joy_state;
             bool always_enabled = false;
+            bool first_joy_state = true;
             std::map<std::string, int> button_map;
             std::vector<std::optional<rosnu::MovementInput>> MovementInput_vec;
         

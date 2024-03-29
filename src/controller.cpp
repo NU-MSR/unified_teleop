@@ -19,8 +19,15 @@ namespace rosnu
 
     void Controller::update_joy_state(const sensor_msgs::msg::Joy::SharedPtr &msg)
     {
-        previous_joy_state = current_joy_state; // Store the current state as the previous state.
+        previous_joy_state = current_joy_state; // Store the current state as the previous state before updating.
         current_joy_state = *msg; // Update the current state with the new message.
+
+        // If it's the first joy state, set the previous state to the updated current state to prevent error.
+        if (first_joy_state)
+        {
+            previous_joy_state = current_joy_state;
+            first_joy_state = false;
+        }
     }
 
     void Controller::update_button_map(YAML::Node device_config_file_path)
