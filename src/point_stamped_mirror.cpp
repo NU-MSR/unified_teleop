@@ -2,42 +2,38 @@
 /// @brief Publishes a series of PostStamped commands for a robot to receive based on inputs from a control device, with the values mirroring the usage of the inputs
 /// 
 /// @section Publishers
-///   desired_position (geometry_msgs/PointStamped) - A PostStamped message for robot teleoperation
+///   desired_position (geometry_msgs/PointStamped) - A PointStamped message indicating the desired position for the robot to move towards.
 ///
 /// @section Subscribers
-///   joy (sensor_msgs/Joy) - A message containing current state of the control device's inputs
+///   joy (sensor_msgs/Joy) - Subscribes to the current state of the control device's inputs (joysticks, triggers, and buttons).
 ///
 /// @section Parameters
-///  `~/enable_control (std::string) [default "UNUSED"]`      - Button assigned to enable control inputs
-///  `~/alt_enable (std::string) [default "UNUSED"]`      - Button assigned to activate alternative max values
+///  `~/frequency (double) [default: 100.0]` - Frequency of teleoperation output in Hz. If set to 0.0, the node only publishes with every new joy message received.
+///  `~/base_rate_of_change (double) [default: 1.5]` - Base rate of change for the output's values.
+///  `~/always_enable (bool) [default: false]` - Whether control input is always enabled, bypassing the need to press a specific enable button for movement.
+///  `~/only_pub_diff_joy (bool) [default: false]` - Whether to only publish the command when a new and different joy message is received, to reduce unnecessary commands.
 ///
-///  `~/x_axis_inc (std::string) [default "UNUSED"]`      - Button assigned to increase the x-axis value of the robot
-///  `~/x_axis_dec (std::string) [default "UNUSED"]`      - Button assigned to decrease the x-axis value of the robot
-///  `~/y_axis_inc (std::string) [default "UNUSED"]`      - Button assigned to increase the y-axis value of the robot
-///  `~/y_axis_dec (std::string) [default "UNUSED"]`      - Button assigned to decrease the y-axis value of the robot
-///  `~/z_axis_inc (std::string) [default "UNUSED"]`      - Button assigned to increase the z-axis value of the robot
-///  `~/z_axis_dec (std::string) [default "UNUSED"]`      - Button assigned to decrease the z-axis value of the robot
+///  (Controller Input Assignments)
+///  `~/enable_control (std::string) [default: "UNUSED"]` - Button assigned to enable control inputs.
+///  `~/alt_enable (std::string) [default: "UNUSED"]` - Button assigned to activate alternative maximum values for movement.
+///  `~/x_axis_inc (std::string) [default: "UNUSED"]` - Button assigned to increase the x-axis value of the robot.
+///  `~/x_axis_dec (std::string) [default: "UNUSED"]` - Button assigned to decrease the x-axis value of the robot.
+///  `~/y_axis_inc (std::string) [default: "UNUSED"]` - Button assigned to increase the y-axis value of the robot.
+///  `~/y_axis_dec (std::string) [default: "UNUSED"]` - Button assigned to decrease the y-axis value of the robot.
+///  `~/z_axis_inc (std::string) [default: "UNUSED"]` - Button assigned to increase the z-axis value of the robot.
+///  `~/z_axis_dec (std::string) [default: "UNUSED"]` - Button assigned to decrease the z-axis value of the robot.
 ///
-///  `~/x_max (double) [default 1.0]`      - The maximum output value along that axis of movement
-///  `~/y_max (double) [default 1.0]`      - The maximum output value along that axis of movement
-///  `~/z_max (double) [default 1.0]`      - The maximum output value along that axis of movement
-///  `~/alt_x_max (double) [default 0.25]`      - The alternative maximum output value along that axis of movement
-///  `~/alt_x_max (double) [default 0.25]`      - The alternative maximum output value along that axis of movement
-///  `~/alt_x_max (double) [default 0.25]`      - The alternative maximum output value along that axis of movement
+///  (Output Modifier Parameters)
+///  `~/x_max, ~/y_max, ~/z_max (double) [default: 1.0]` - Maximum output values along their respective axes of movement.
+///  `~/alt_x_max, ~/alt_y_max, ~/alt_z_max (double) [default: 0.25]` - Alternative maximum output values along their respective axes of movement.
+///  `~/x_flip, ~/y_flip, ~/z_flip (bool) [default: false]` - Whether the inputs for these movements should be flipped.
+///  `~/boundary_radius (double) [default: 0.0]` - Radius of the spherical space around the zero position that the robot can move within.
+///  `~/lin_rate_chg_fac (double) [default: 0.0]` - Factor adjusting the rate of change for the output's values.
+///  `~/x_offset, ~/y_offset, ~/z_offset (double) [default: 0.0]` - Offsets for the message's zero values along their respective axes.
 ///
-///  `~/x_flip (bool) [default false]`      - Whether the input for this movement should be flipped
-///  `~/y_flip (bool) [default false]`      - Whether the input for this movement should be flipped
-///  `~/z_flip (bool) [default false]`      - Whether the input for this movement should be flipped
+///  `~/input_device_config_file (std::string) [default: "dualshock4_mapping"]` - Path to the input device configuration file specifying the button mappings.
 ///
-///  `~/boundary_radius (double) [default 0.0]`      - Radius of the spherical space around the zero position that the robot can move in
-///  `~/lin_rate_chg_fac (double) [default 0.0]`     - Factor to the rate of change for the output's values
-///  `~/x_offset (double) [default 0.0]`             - The offset for the message's zero value
-///  `~/y_offset (double) [default 0.0]`             - The offset for the message's zero value
-///  `~/z_offset (double) [default 0.0]`             - The offset for the message's zero value
-///
-///  `~/always_enable (bool) [default false]`      - Whether control input is always enabled (USE WITH CAUTION)
-///
-///  `~/input_device_config_file (std::string) [default "dualshock4_mapping"]`      - Chosen input device config file
+/// @note The `always_enable` parameter allows for continuous control without pressing an enable button but use it with caution to avoid unintended movements.
 
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
@@ -162,29 +158,7 @@ class PointStampedMirrorNode : public rclcpp::Node
         //
         // Controller object
         rosnu::Controller controller;
-        // For joy and command messages
-        geometry_msgs::msg::PointStamped current_command, previous_command;
-        bool new_joy_state_received;
-        bool always_enable;
-        double base_rate_of_change;
-        bool only_pub_diff_joy;
-        // For node parameters
-        bool only_pub_with_joy; // Whether the node only publishes with every new received joy_state
-        double x_max;
-        double y_max;
-        double z_max;
-        double alt_x_max;
-        double alt_y_max;
-        double alt_z_max;
-        double boundary_radius;
-        double lin_rate_chg_fac;
-        double x_offset;
-        double y_offset;
-        double z_offset;
-        bool x_flip;
-        bool y_flip;
-        bool z_flip;
-        // The various MovementInput objects to be initialized in the constructor
+        // MovementInput objects
         std::optional<rosnu::MovementInput> enable_input;
         std::optional<rosnu::MovementInput> reset_input;
         std::optional<rosnu::MovementInput> alt_input;
@@ -194,6 +168,29 @@ class PointStampedMirrorNode : public rclcpp::Node
         std::optional<rosnu::MovementInput> y_dec_input;
         std::optional<rosnu::MovementInput> z_inc_input;
         std::optional<rosnu::MovementInput> z_dec_input;
+        // Command messages
+        geometry_msgs::msg::PointStamped current_command, previous_command;
+        // Parameter-related
+        bool always_enable;
+        double base_rate_of_change;
+        bool only_pub_diff_joy;
+        bool only_pub_with_joy;
+        double boundary_radius;
+        double lin_rate_chg_fac;
+        double x_max;
+        double y_max;
+        double z_max;
+        double alt_x_max;
+        double alt_y_max;
+        double alt_z_max;
+        double x_offset;
+        double y_offset;
+        double z_offset;
+        bool x_flip;
+        bool y_flip;
+        bool z_flip;
+        // Additional variables
+        bool new_joy_state_received;
 
         //
         // NODE DECLARATIONS
