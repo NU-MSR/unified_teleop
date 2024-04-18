@@ -179,8 +179,10 @@ namespace rosnu
                 break;
             case rosnu::InputType::None:
                 // Log an error and exit if the input type is uninitialized
-                RCLCPP_ERROR(rclcpp::get_logger("pnt_stmp modifier"), "InputType is None");
-                rclcpp::shutdown();
+                throw std::runtime_error("InputType is None");
+            default:
+                // Log an error and exit if the input type is unrecognized
+                throw std::runtime_error("InputType is not recognized");
         }
 
         // Determine whether to adjust the value based on the reading and the intended direction (increase or decrease)
@@ -206,6 +208,9 @@ namespace rosnu
                 case AxisType::Z_Axis:
                     new_message.point.z += new_value;
                     break;
+                default:
+                    // Log an error and exit if the axis type is unrecognized
+                    throw std::runtime_error("AxisType is not recognized");
             }
         }
 

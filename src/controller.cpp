@@ -62,7 +62,7 @@ namespace rosnu
         }
     }
 
-    double Controller::read_MovementInput(const std::optional<MovementInput> input, const sensor_msgs::msg::Joy joy_state)
+    double Controller::read_MovementInput(const std::optional<MovementInput> input, const sensor_msgs::msg::Joy joy_state) const
     {
         if (input.has_value())
         {
@@ -91,7 +91,7 @@ namespace rosnu
         MovementInput_vec.clear(); // Empty the vector of MovementInput objects.
     }
 
-    bool Controller::is_joy_state_different()
+    bool Controller::is_joy_state_different() const
     {
         bool result = false;
         for (int i = 0; i < static_cast<int>(MovementInput_vec.size()); i++)
@@ -120,7 +120,7 @@ namespace rosnu
         return result; // Return whether any inputs have changed.
     }
 
-    bool Controller::is_enabled(const std::optional<MovementInput> input)
+    bool Controller::is_enabled(const std::optional<MovementInput> input) const
     {
         // Check the always_enabled flag first.
         if (always_enabled)
@@ -138,11 +138,7 @@ namespace rosnu
         }
     }
 
-    //
-    // GETTERS
-    //
-
-    InputType Controller::get_input_type(const std::string input_name)
+    InputType Controller::get_input_type(const std::string input_name) const
     {
         // Handle empty input names.
         if (input_name.empty())
@@ -168,7 +164,7 @@ namespace rosnu
         }
     }
 
-    sensor_msgs::msg::Joy Controller::get_current_joy_state()
+    sensor_msgs::msg::Joy Controller::get_current_joy_state() const
     {
         return current_joy_state; // Return the stored current joy state.
     }

@@ -19,14 +19,9 @@ namespace rosnu
         Trigger,
         /// @brief Represents a button input, such as a regular button; the values are usually either 0 or 1.
         Button,
+        /// @brief Represents an unused input type.
         None
     };
-
-    /// @brief Represents an unused input type.
-    constexpr InputType UNUSED_TYPE = InputType::None;
-
-    /// @brief Represents an unused index value.
-    constexpr int UNUSED_INDEX = -1;
 
     struct MovementInput
     {
@@ -35,8 +30,9 @@ namespace rosnu
         /// @brief InputType that indicates the type of input it is (Axis, Trigger, Button, None)
         InputType type;
 
-        /// @brief Default constructor. Initializes index to UNUSED_INDEX and type to InputType::None
-        MovementInput() : index(UNUSED_INDEX), type(InputType::None) {}
+        /// @brief Default constructor. Initializes index to -1 and type to InputType::None
+        MovementInput() : index(-1), type(InputType::None) {}
+
         /// @brief Constructor with provided index and type parameters.
         /// @param index_no The index of the joy message array.
         /// @param input_type The type of input.
@@ -53,9 +49,6 @@ namespace rosnu
             std::vector<std::optional<rosnu::MovementInput>> MovementInput_vec;
         
         public:
-            //
-            // CONSTRUCTORS
-            //
             /// @brief Default constructor for Controller.
             Controller();
 
@@ -63,9 +56,10 @@ namespace rosnu
             /// @param device_config_file_path YAML Node containing the device configuration file path.
             Controller(YAML::Node device_config_file_path);
 
-            //
-            // FUNCTIONS
-            //
+            /// @brief Constructor that initializes the Controller with device configuration.
+            /// @param device_config_file_path YAML Node containing the device configuration file path.
+            /// @param enabled Sets the always_enabled flag.
+            Controller(YAML::Node device_config_file_path, bool enabled);
 
             /// @brief Reads and updates the current joystick state.
             /// @param msg The latest joystick message received.
@@ -84,36 +78,28 @@ namespace rosnu
             /// @param input The MovementInput object to read the state for.
             /// @param joy_state The provided joy state.
             /// @return The state of the input as a double.
-            double read_MovementInput(const std::optional<MovementInput> input, const sensor_msgs::msg::Joy joy_state);
+            double read_MovementInput(const std::optional<MovementInput> input, const sensor_msgs::msg::Joy joy_state) const;
 
             /// @brief Clears the vector of MovementInput objects.
             void clear_MovementInput_vec();
 
             /// @brief Checks if the current joy state is different from the previous one.
             /// @return True if different, otherwise false.
-            bool is_joy_state_different();
+            bool is_joy_state_different() const;
 
             /// @brief Checks if a given input is enabled.
             /// @param input The MovementInput object to check.
             /// @return True if the input is enabled or if the variable always_enabled is true, otherwise false.
-            bool is_enabled(const std::optional<rosnu::MovementInput> input);
-
-            //
-            // GETTERS
-            //
+            bool is_enabled(const std::optional<rosnu::MovementInput> input) const;
 
             /// @brief Gets the input type based on the input name.
             /// @param input_name The name of the input.
             /// @return The InputType of the given input name.
-            InputType get_input_type(std::string input_name);
+            InputType get_input_type(std::string input_name) const;
 
             /// @brief Gets the current joystick state.
             /// @return The current joy state.
-            sensor_msgs::msg::Joy get_current_joy_state();
-
-            //
-            // SETTERS
-            //
+            sensor_msgs::msg::Joy get_current_joy_state() const;
 
             /// @brief Sets the always_enabled flag.
             /// @param enabled The new value for the always_enabled flag.
