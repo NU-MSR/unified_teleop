@@ -19,129 +19,118 @@ find_package(lifecycle_msgs REQUIRED)
 ## Build ##
 ###########
 
-# ament_export_dependencies(rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle)
-
-set(UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES
-  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
-)
-
 # Create a library
-add_library(${PROJECT_NAME} src/controller.cpp include/unified_teleop/param_helpers.hpp include/unified_teleop/pnt_stmp_modifiers.hpp include/unified_teleop/twist_modifiers.hpp)
+add_library(unified_teleop src/controller.cpp include/unified_teleop/param_helpers.hpp include/unified_teleop/pnt_stmp_modifiers.hpp include/unified_teleop/twist_modifiers.hpp)
 
 # Include the include directories and their header files
-target_include_directories(${PROJECT_NAME}
+target_include_directories(unified_teleop
     PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
     $<INSTALL_INTERFACE:include/>)
 
-ament_target_dependencies(${PROJECT_NAME}
-  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+ament_target_dependencies(unified_teleop
+  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
 )
-target_link_libraries(${PROJECT_NAME}
-  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
-)
-
-set(UNIFIED_TELEOP_TARGET_LINK_LIBRARIES
-  cmakeme_flags yaml-cpp ${PROJECT_NAME}
-  "${cpp_typesupport_target}"
+target_link_libraries(unified_teleop
+  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
 )
 
 # point_stamped_incr
-add_executable(${PROJECT_NAME}_point_stamped_incr src/point_stamped_incr.cpp)
-set_target_properties(${PROJECT_NAME}_point_stamped_incr
+add_executable(point_stamped_incr_node src/point_stamped_incr.cpp)
+set_target_properties(point_stamped_incr_node
   PROPERTIES
   OUTPUT_NAME point_stamped_incr
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_point_stamped_incr
-  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+ament_target_dependencies(point_stamped_incr_node
+  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
 )
-target_link_libraries(${PROJECT_NAME}_point_stamped_incr
-  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+target_link_libraries(point_stamped_incr_node
+  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
 )
 
 # point_stamped_mirror
-add_executable(${PROJECT_NAME}_point_stamped_mirror src/point_stamped_mirror.cpp)
-set_target_properties(${PROJECT_NAME}_point_stamped_mirror
+add_executable(point_stamped_mirror_node src/point_stamped_mirror.cpp)
+set_target_properties(point_stamped_mirror_node
   PROPERTIES
   OUTPUT_NAME point_stamped_mirror
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_point_stamped_mirror
-  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+ament_target_dependencies(point_stamped_mirror_node
+  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
 )
-target_link_libraries(${PROJECT_NAME}_point_stamped_mirror
-  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+target_link_libraries(point_stamped_mirror_node
+  unified_teleop cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
 )
 
 # twist_mirror
-add_executable(${PROJECT_NAME}_twist_mirror src/twist_mirror.cpp)
-set_target_properties(${PROJECT_NAME}_twist_mirror
+add_executable(teleop_twist_mirror_node src/twist_mirror.cpp)
+set_target_properties(teleop_twist_mirror_node
   PROPERTIES
   OUTPUT_NAME twist_mirror
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_twist_mirror
-  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+ament_target_dependencies(teleop_twist_mirror_node
+  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
 )
-target_link_libraries(${PROJECT_NAME}_twist_mirror
-  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+target_link_libraries(teleop_twist_mirror_node
+  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
 )
 
 # twist_merger
-add_executable(${PROJECT_NAME}_twist_merger src/twist_merger.cpp)
-set_target_properties(${PROJECT_NAME}_twist_merger
+add_executable(teleop_twist_merger_node src/twist_merger.cpp)
+set_target_properties(teleop_twist_merger_node
   PROPERTIES
   OUTPUT_NAME twist_merger
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_twist_merger
-  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+ament_target_dependencies(teleop_twist_merger_node
+  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
 )
-target_link_libraries(${PROJECT_NAME}_twist_merger
-  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+target_link_libraries(teleop_twist_merger_node
+  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
 )
 
 # lifecycle_point_stamped_incr
-add_executable(${PROJECT_NAME}_lifecycle_point_stamped_incr src/lifecycle_point_stamped_incr.cpp)
-set_target_properties(${PROJECT_NAME}_lifecycle_point_stamped_incr
+add_executable(lifecycle_point_stamped_incr_node src/lifecycle_point_stamped_incr.cpp)
+set_target_properties(lifecycle_point_stamped_incr_node
   PROPERTIES
   OUTPUT_NAME lifecycle_point_stamped_incr
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_lifecycle_point_stamped_incr
-  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+ament_target_dependencies(lifecycle_point_stamped_incr_node
+  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
 )
-target_link_libraries(${PROJECT_NAME}_lifecycle_point_stamped_incr
-  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+target_link_libraries(lifecycle_point_stamped_incr_node
+  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
 )
 
 # lifecycle_twist_mirror
-add_executable(${PROJECT_NAME}_lifecycle_twist_mirror src/lifecycle_twist_mirror.cpp)
-set_target_properties(${PROJECT_NAME}_lifecycle_twist_mirror
+add_executable(lifecycle_twist_mirror_node src/lifecycle_twist_mirror.cpp)
+set_target_properties(lifecycle_twist_mirror_node
   PROPERTIES
   OUTPUT_NAME lifecycle_twist_mirror
   PREFIX ""
 )
-ament_target_dependencies(${PROJECT_NAME}_lifecycle_twist_mirror
-  ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+ament_target_dependencies(lifecycle_twist_mirror_node
+  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
 )
-target_link_libraries(${PROJECT_NAME}_lifecycle_twist_mirror
-  ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+target_link_libraries(lifecycle_twist_mirror_node
+  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
 )
 
 # # integration_test
-# add_executable(${PROJECT_NAME}_integration_test_node test/integration_test_node.cpp)
-# set_target_properties(${PROJECT_NAME}_integration_test_node
+# add_executable(unified_teleop_integration_test_node test/integration_test_node.cpp)
+# set_target_properties(unified_teleop_integration_test_node
 #   PROPERTIES
 #   OUTPUT_NAME integration_test_node
 #   PREFIX ""
 # )
-# ament_target_dependencies(${PROJECT_NAME}_integration_test_node
-#   ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+# ament_target_dependencies(unified_teleop_integration_test_node
+#   rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
 # )
-# target_link_libraries(${PROJECT_NAME}_integration_test_node
-#   ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+# target_link_libraries(unified_teleop_integration_test_node
+#  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
 #   catch_ros2::catch_ros2_with_node_main
 # )
 #
@@ -154,43 +143,43 @@ target_link_libraries(${PROJECT_NAME}_lifecycle_twist_mirror
 #############
 
 install(TARGETS
-  ${PROJECT_NAME}_point_stamped_incr
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  point_stamped_incr_node
+  RUNTIME DESTINATION lib/unified_teleop
 )
 
 install(TARGETS
-  ${PROJECT_NAME}_point_stamped_mirror
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  point_stamped_mirror_node
+  RUNTIME DESTINATION lib/unified_teleop
 )
 
 install(TARGETS
-  ${PROJECT_NAME}_twist_mirror
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  teleop_twist_mirror_node
+  RUNTIME DESTINATION lib/unified_teleop
 )
 
 install(TARGETS
-  ${PROJECT_NAME}_twist_merger
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  teleop_twist_merger_node
+  RUNTIME DESTINATION lib/unified_teleop
 )
 
 install(TARGETS
-  ${PROJECT_NAME}_lifecycle_point_stamped_incr
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  lifecycle_point_stamped_incr_node
+  RUNTIME DESTINATION lib/unified_teleop
 )
 
 install(TARGETS
-  ${PROJECT_NAME}_lifecycle_twist_mirror
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  lifecycle_twist_mirror_node
+  RUNTIME DESTINATION lib/unified_teleop
 )
 
 # install example files
-install(DIRECTORY example DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY example DESTINATION share/unified_teleop)
 
 # install configuration files
-install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config DESTINATION share/unified_teleop)
 
 # install testing files
-install(DIRECTORY test DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY test DESTINATION share/unified_teleop)
 
 #############
 ## Testing ##
@@ -214,41 +203,41 @@ if(BUILD_TESTING)
   include(CTest)
 
   # integration_test
-  add_executable(${PROJECT_NAME}_integration_test_node test/integration_test_node.cpp)
-  set_target_properties(${PROJECT_NAME}_integration_test_node
+  add_executable(unified_teleop_integration_test_node test/integration_test_node.cpp)
+  set_target_properties(unified_teleop_integration_test_node
     PROPERTIES
     OUTPUT_NAME integration_test_node
     PREFIX ""
   )
-  ament_target_dependencies(${PROJECT_NAME}_integration_test_node
-    ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+  ament_target_dependencies(unified_teleop_integration_test_node
+    rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
   )
-  target_link_libraries(${PROJECT_NAME}_integration_test_node
-    ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+  target_link_libraries(unified_teleop_integration_test_node
+    cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
     catch_ros2::catch_ros2_with_node_main
   )
   install(TARGETS
-    ${PROJECT_NAME}_integration_test_node
-    RUNTIME DESTINATION lib/${PROJECT_NAME}
+    unified_teleop_integration_test_node
+    RUNTIME DESTINATION lib/unified_teleop
   )
 
   # playground_test
-  add_executable(${PROJECT_NAME}_playground_test_node test/playground_test_node.cpp)
-  set_target_properties(${PROJECT_NAME}_playground_test_node
+  add_executable(unified_teleop_playground_test_node test/playground_test_node.cpp)
+  set_target_properties(unified_teleop_playground_test_node
     PROPERTIES
     OUTPUT_NAME playground_test_node
     PREFIX ""
   )
-  ament_target_dependencies(${PROJECT_NAME}_playground_test_node
-    ${UNIFIED_TELEOP_AMENT_TARGET_DEPENDENCIES}
+  ament_target_dependencies(unified_teleop_playground_test_node
+    rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
   )
-  target_link_libraries(${PROJECT_NAME}_playground_test_node
-    ${UNIFIED_TELEOP_TARGET_LINK_LIBRARIES}
+  target_link_libraries(unified_teleop_playground_test_node
+    cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
     catch_ros2::catch_ros2_with_node_main
   )
   install(TARGETS
-    ${PROJECT_NAME}_playground_test_node
-    RUNTIME DESTINATION lib/${PROJECT_NAME}
+    unified_teleop_playground_test_node
+    RUNTIME DESTINATION lib/unified_teleop
   )
 
   #################
@@ -257,7 +246,7 @@ if(BUILD_TESTING)
   # # This is the launch file that will be used to run the integration test
   # install(FILES
   #   test/integration_test.launch.xml  # example in XML
-  #   DESTINATION share/${PROJECT_NAME}
+  #   DESTINATION share/unified_teleop
   # )
 
   endif()
