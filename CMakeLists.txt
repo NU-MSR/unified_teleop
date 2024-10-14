@@ -20,7 +20,7 @@ find_package(lifecycle_msgs REQUIRED)
 ###########
 
 # Create a library
-add_library(unified_teleop src/controller.cpp include/unified_teleop/param_helpers.hpp include/unified_teleop/pnt_stmp_modifiers.hpp include/unified_teleop/twist_modifiers.hpp)
+add_library(unified_teleop src/controller.cpp include/unified_teleop/param_helpers.hpp src/pnt_stmp_modifiers.cpp src/twist_modifiers.cpp)
 
 # Include the include directories and their header files
 target_include_directories(unified_teleop
