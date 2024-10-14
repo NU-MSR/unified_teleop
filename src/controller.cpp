@@ -47,10 +47,9 @@ namespace rosnu
     {
         if (input_assignment != "UNUSED")
         {
-            MovementInput result_input;
-            result_input.index = button_map.at(input_assignment); // Set index based on the button map.
-            result_input.type = get_input_type(input_assignment); // Determine the type of input.
-
+            MovementInput result_input(button_map.at(input_assignment), get_input_type(input_assignment));  // Set index based on the button map
+                                                                                                            // and determine the type of input.
+                                                                                                            
             // Add the newly generated MovementInput object to the MovementInput_vec for tracking.
             MovementInput_vec.push_back(result_input);
 
