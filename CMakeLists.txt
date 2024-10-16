@@ -35,6 +35,24 @@ target_link_libraries(unified_teleop
   cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
 )
 
+# defining common dependencies
+set(COMMON_DEPS
+  rclcpp
+  geometry_msgs
+  sensor_msgs
+  rosbag2_interfaces
+  lifecycle_msgs
+  rclcpp_lifecycle
+)
+
+# defining common libraries
+set(COMMON_LIBS
+  unified_teleop
+  cmakeme_flags
+  yaml-cpp
+  "${cpp_typesupport_target}"
+)
+
 # point_stamped_incr
 add_executable(point_stamped_incr_node src/point_stamped_incr.cpp)
 set_target_properties(point_stamped_incr_node
@@ -42,11 +60,9 @@ set_target_properties(point_stamped_incr_node
   OUTPUT_NAME point_stamped_incr
   PREFIX ""
 )
-ament_target_dependencies(point_stamped_incr_node
-  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
-)
+ament_target_dependencies(point_stamped_incr_node ${COMMON_DEPS})
 target_link_libraries(point_stamped_incr_node
-  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
+  ${COMMON_LIBS}
 )
 
 # point_stamped_mirror
@@ -56,11 +72,9 @@ set_target_properties(point_stamped_mirror_node
   OUTPUT_NAME point_stamped_mirror
   PREFIX ""
 )
-ament_target_dependencies(point_stamped_mirror_node
-  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
-)
+ament_target_dependencies(point_stamped_mirror_node ${COMMON_DEPS})
 target_link_libraries(point_stamped_mirror_node
-  unified_teleop cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
+  ${COMMON_LIBS}
 )
 
 # twist_mirror
@@ -70,11 +84,9 @@ set_target_properties(teleop_twist_mirror_node
   OUTPUT_NAME twist_mirror
   PREFIX ""
 )
-ament_target_dependencies(teleop_twist_mirror_node
-  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
-)
+ament_target_dependencies(teleop_twist_mirror_node ${COMMON_DEPS})
 target_link_libraries(teleop_twist_mirror_node
-  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
+  ${COMMON_LIBS}
 )
 
 # twist_merger
@@ -84,11 +96,9 @@ set_target_properties(teleop_twist_merger_node
   OUTPUT_NAME twist_merger
   PREFIX ""
 )
-ament_target_dependencies(teleop_twist_merger_node
-  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
-)
+ament_target_dependencies(teleop_twist_merger_node ${COMMON_DEPS})
 target_link_libraries(teleop_twist_merger_node
-  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
+  ${COMMON_LIBS}
 )
 
 # lifecycle_point_stamped_incr
@@ -98,11 +108,9 @@ set_target_properties(lifecycle_point_stamped_incr_node
   OUTPUT_NAME lifecycle_point_stamped_incr
   PREFIX ""
 )
-ament_target_dependencies(lifecycle_point_stamped_incr_node
-  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
-)
+ament_target_dependencies(lifecycle_point_stamped_incr_node ${COMMON_DEPS})
 target_link_libraries(lifecycle_point_stamped_incr_node
-  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
+  ${COMMON_LIBS}
 )
 
 # lifecycle_twist_mirror
@@ -112,11 +120,9 @@ set_target_properties(lifecycle_twist_mirror_node
   OUTPUT_NAME lifecycle_twist_mirror
   PREFIX ""
 )
-ament_target_dependencies(lifecycle_twist_mirror_node
-  rclcpp geometry_msgs sensor_msgs rosbag2_interfaces lifecycle_msgs rclcpp_lifecycle
-)
+ament_target_dependencies(lifecycle_twist_mirror_node ${COMMON_DEPS})
 target_link_libraries(lifecycle_twist_mirror_node
-  cmakeme_flags yaml-cpp "${cpp_typesupport_target}"
+  ${COMMON_LIBS}
 )
 
 # # integration_test
